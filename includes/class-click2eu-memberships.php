@@ -55,9 +55,24 @@ final class Click2EU_Memberships {
 		return $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . self::table_name() . ' WHERE order_item_id = %d', absint( $order_item_id ) ) );
 	}
 
-	public static function get_memberships_for_user( $user_id ) {
+	public static function get_memberships_for_user( $user_id, $limit = 0, $offset = 0 ) {
 		global $wpdb;
+		if ( $limit > 0 ) {
+			return $wpdb->get_results(
+				$wpdb->prepare(
+					'SELECT * FROM ' . self::table_name() . ' WHERE candidate_user_id = %d ORDER BY membership_id DESC LIMIT %d OFFSET %d',
+					absint( $user_id ),
+					absint( $limit ),
+					absint( $offset )
+				)
+			);
+		}
 		return $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM ' . self::table_name() . ' WHERE candidate_user_id = %d ORDER BY membership_id DESC', absint( $user_id ) ) );
+	}
+
+	public static function count_memberships_for_user( $user_id ) {
+		global $wpdb;
+		return absint( $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . self::table_name() . ' WHERE candidate_user_id = %d', absint( $user_id ) ) ) );
 	}
 
 	public static function get_membership_for_user( $user_id ) {

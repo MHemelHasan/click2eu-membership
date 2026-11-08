@@ -5,7 +5,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class Click2EU_Config {
-	const VERSION           = '0.3.1';
+	const VERSION           = '0.4.0';
 	const DB_VERSION        = '1.0.0';
 	const JOIN_PAGE_OPTION  = 'click2eu_join_page_id';
 	const DB_VERSION_OPTION = 'click2eu_membership_db_version';
