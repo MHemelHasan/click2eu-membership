@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: Click2EU Membership
- * Description: Responsive plans section, four-card grid and single cards with WP Job Manager categories and direct WooCommerce checkout. Display-only durations; no membership activation.
- * Version: 0.2.0
+ * Description: Candidate membership packages, manual-payment activation, access control and WooCommerce integration for Click2EU.
+ * Version: 0.3.1
  * Requires Plugins: woocommerce
  * Requires PHP: 7.4
  * Author: HemelHasan
@@ -13,6 +13,16 @@
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
+
+require_once __DIR__ . '/includes/class-click2eu-config.php';
+require_once __DIR__ . '/includes/class-click2eu-auth.php';
+require_once __DIR__ . '/includes/class-click2eu-memberships.php';
+require_once __DIR__ . '/includes/class-click2eu-orders.php';
+require_once __DIR__ . '/includes/class-click2eu-access.php';
+require_once __DIR__ . '/includes/class-click2eu-cariera.php';
+require_once __DIR__ . '/includes/class-click2eu-status.php';
+
+register_activation_hook( __FILE__, array( 'Click2EU_Memberships', 'install' ) );
 
 /**
  * Uses WooCommerce CRUD for order and order-item metadata (HPOS-friendly).
@@ -25,7 +35,7 @@ add_action( 'before_woocommerce_init', function () {
 } );
 
 final class Click2EU_Membership_Phase_One {
-    private const VERSION = '0.2.0';
+    private const VERSION = '0.3.1';
 
     /** Phase 1: existing, separately-created WooCommerce simple products. */
     private const PRODUCTS = array(
@@ -319,6 +329,8 @@ final class Click2EU_Membership_Phase_One {
                 'add_to_cart'      => 'Could not start checkout. Please try again.',
                 'security'         => 'Your session expired. Please try again.',
                 'woocommerce'      => 'The checkout service is currently unavailable.',
+                'candidate_only'   => 'Candidate memberships require a Candidate account.',
+                'already_active'   => 'Your Candidate membership is already active.',
             );
             if ( isset( $errors[ $error_code ] ) ) {
                 $html .= '<p class="c2eu-form-error" role="alert">' . esc_html( $errors[ $error_code ] ) . '</p>';
@@ -360,8 +372,20 @@ final class Click2EU_Membership_Phase_One {
 
         // Candidate accounts register and sign in through the existing Cariera flow.
         if ( ! is_user_logged_in() ) {
-            $return_url = wp_get_referer() ? wp_get_referer() : home_url( '/' );
-            wp_safe_redirect( wp_login_url( $return_url ) );
+            wp_safe_redirect( Click2EU_Auth::cariera_auth_url() );
+            exit;
+        }
+
+        if ( ! Click2EU_Auth::is_candidate() ) {
+            $this->redirect_error( 'candidate_only', $tier );
+        }
+
+        if ( Click2EU_Memberships::has_active_membership( get_current_user_id() ) ) {
+            $this->redirect_error( 'already_active', $tier );
+        }
+
+        if ( Click2EU_Memberships::has_pending_membership( get_current_user_id() ) ) {
+            wp_safe_redirect( Click2EU_Auth::my_orders_url() );
             exit;
         }
 
@@ -521,4 +545,10 @@ final class Click2EU_Membership_Phase_One {
     }
 }
 
+add_action( 'plugins_loaded', array( 'Click2EU_Memberships', 'maybe_install' ), 20 );
+
 new Click2EU_Membership_Phase_One();
+new Click2EU_Orders();
+new Click2EU_Access();
+new Click2EU_Cariera();
+new Click2EU_Status();

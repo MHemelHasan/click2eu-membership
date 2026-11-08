@@ -1,5 +1,21 @@
-Click2EU Membership (v0.2.0)
+Click2EU Membership (v0.3.1)
 =======================================
+
+PHASE 2 UPDATE:
+- Adds a persistent Candidate membership ledger.
+- Creates pending records for recognized membership orders.
+- Activates only when an administrator moves the order to Completed.
+- Suspends access after Failed, Cancelled or Refunded reversals.
+- Adds Candidate role/cart validation, protected feature checks, Cariera login
+  routing and [click2eu_membership_status].
+- Durations remain display-only; automatic expiry is not implemented.
+
+v0.3.1 hardens one-package-per-order enforcement, revalidates active/pending
+membership state at checkout, serializes per-Candidate activation, and records
+pre-activation order reversals as cancelled rather than pending.
+
+See docs/DEPLOYMENT.md and docs/TEST-REPORT.md for the v0.3.x architecture,
+configuration, test evidence and rollback procedure.
 
 UPDATE: redesigned from the user-provided Click2EU homepage HTML PLANS section.
 The plugin retains the v0.1.0 WooCommerce checkout behavior and original folder/slug.

@@ -1,0 +1,60 @@
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+credentials*
+secrets*
+auth.json
+
+# Databases, backups, releases and archives
+*.sql
+*.sql.gz
+*.sqlite
+*.sqlite3
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+*.rar
+backup/
+backups/
+release/
+releases/
+
+# Logs, coverage and local test artifacts
+*.log
+logs/
+coverage/
+.phpunit.result.cache
+.phpunit.cache/
+test-results/
+playwright-report/
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Dependencies and generated assets not owned by this plugin
+node_modules/
+vendor/
+
+# IDE/editor files
+.idea/
+.vscode/
+*.code-workspace
+*.suo
+*.user
+*.swp
+*.swo
+*~
+
+# Operating system files
+.DS_Store
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
