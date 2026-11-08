@@ -1,4 +1,18 @@
-# Click2EU Membership 0.3.1
+# Click2EU Membership 0.4.0
+
+## 0.4.0 dashboard update
+
+- Registers the `my-membership` WooCommerce My Account endpoint and adds the
+  Candidate-only **My Membership** menu item.
+- Provides `[click2eu_membership_dashboard]` using the same renderer.
+- Reads current and historical records from the existing ledger and reads
+  related orders only through WooCommerce CRUD objects.
+- Verifies both ledger and order ownership before rendering an order link.
+- Paginates history at ten records per page and safely represents deleted or
+  mismatched historical orders as unavailable.
+- Performs a one-time rewrite flush on activation or endpoint-version upgrade;
+  rewrite rules are not flushed on normal requests.
+- Adds no database schema, expiration, renewal or frontend mutation controls.
 
 ## 0.3.1 recovery patch
 
@@ -20,6 +34,8 @@
 - `Click2EU_Access`: frontend, action and REST access policy.
 - `Click2EU_Cariera`: Candidate login routing and registration-role hardening.
 - `Click2EU_Status`: `[click2eu_membership_status]` output.
+- `Click2EU_Dashboard`: My Account endpoint, full dashboard shortcode, current
+  record and paginated ledger-history presentation.
 
 ## Database schema
 
@@ -31,6 +47,8 @@ category, status and timestamps. Schema version is stored in
 
 Statuses used by 0.3.1 are `pending`, `active`, `suspended` and `cancelled`.
 `expired` is reserved for later policy. No expiry calculation is implemented.
+
+Version 0.4.0 does not change this schema or status lifecycle.
 
 The status component is safest on WooCommerce My Account or an accessible
 account subpage. Candidate Dashboard is protected for unpaid/pending Candidates,
@@ -70,6 +88,11 @@ not globally blocked. Employers and administrators are outside Candidate policy.
 7. Keep Cariera Packages inactive for this independent membership flow.
 8. Confirm BACS/cheque instructions and the Completed-order approval procedure.
 9. Run the full staging checklist before production activation.
+10. Visit **Settings > Permalinks** and save once only if the endpoint returns
+    404 after deployment; activation and version upgrade normally flush the
+    endpoint automatically.
+11. Confirm `/my-account/my-membership/` appears for a Candidate account and
+    that `[click2eu_membership_dashboard]` is used only on an authenticated page.
 
 Do not copy the local database to production. It may overwrite live users,
 orders, configuration and content.

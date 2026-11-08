@@ -1,6 +1,42 @@
-# Click2EU Membership 0.3.1 Test Report
+# Click2EU Membership 0.4.0 Test Report
 
-Test date: 2026-11-08 (Asia/Dhaka)
+Dashboard test date: 2026-11-09 (Asia/Dhaka)
+
+## 0.4.0 dashboard integration tests
+
+Tests used temporary `example.invalid` Candidate/Employer users, local
+WooCommerce orders and isolated membership-ledger rows. The fixtures included
+pending, active, suspended, cancelled, multiple-history, missing-order and
+cross-user-order cases. All temporary users, orders and ledger rows were removed
+after the run; no notification or external payment request was sent.
+
+| Test | Result |
+|---|---|
+| Guest dashboard requires authentication | PASS |
+| Employer cannot view Candidate records or Candidate menu item | PASS |
+| Candidate with no membership sees empty state and Join Us | PASS |
+| Pending state shows payment-verification copy and My Orders | PASS |
+| Active state shows activation data and owned order link | PASS |
+| Suspended state is clearly identified | PASS |
+| Cancelled record is not presented as active | PASS |
+| Multiple records are newest-first and paginated at ten rows | PASS |
+| Missing historical order is represented as unavailable | PASS |
+| Cross-user WooCommerce order link is suppressed | PASS |
+| Selected job category renders | PASS |
+| Candidate My Account menu item and endpoint callback register | PASS |
+| `[click2eu_membership_dashboard]` registers and renders | PASS |
+| Existing `[click2eu_membership_status]` remains registered | PASS |
+| Existing pricing shortcode still renders | PASS |
+| Ledger count/page queries remain user-scoped | PASS |
+| Current record follows repository status precedence | PASS |
+| PHP syntax for every plugin PHP file | PASS |
+| HPOS-safe order reads use WooCommerce CRUD | PASS |
+| Mobile CSS uses a scoped stacked table/card layout | PASS (structural) |
+
+No schema migration was introduced. Checkout creation and activation classes
+were not modified by the dashboard implementation.
+
+## Prior v0.3.1 engine tests
 
 The integration tests used two temporary `example.invalid` users and one local
 WooCommerce order. No real payment gateway, notification or external webhook

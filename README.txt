@@ -1,5 +1,16 @@
-Click2EU Membership (v0.3.1)
+Click2EU Membership (v0.4.0)
 =======================================
+
+v0.4.0 MEMBERSHIP DASHBOARD:
+- Adds the WooCommerce My Account endpoint /my-account/my-membership/.
+- Adds a Candidate-only "My Membership" account menu item.
+- Adds [click2eu_membership_dashboard] for the same read-only dashboard on
+  other authenticated pages.
+- Shows the repository-selected current record, payment/order status, package,
+  category, activation date and an ownership-checked WooCommerce order link.
+- Shows newest-first ledger history with ten records per page, including
+  pending, active, suspended and cancelled records and missing-order handling.
+- Adds no expiry, renewal, status mutation or duplicate history table.
 
 PHASE 2 UPDATE:
 - Adds a persistent Candidate membership ledger.
@@ -14,8 +25,16 @@ v0.3.1 hardens one-package-per-order enforcement, revalidates active/pending
 membership state at checkout, serializes per-Candidate activation, and records
 pre-activation order reversals as cancelled rather than pending.
 
-See docs/DEPLOYMENT.md and docs/TEST-REPORT.md for the v0.3.x architecture,
+See docs/DEPLOYMENT.md and docs/TEST-REPORT.md for the current architecture,
 configuration, test evidence and rollback procedure.
+
+MEMBERSHIP DASHBOARD SHORTCODES:
+  [click2eu_membership_dashboard]
+      Full current-membership card and paginated membership history. The
+      viewer must be signed in as the Candidate who owns the records.
+
+  [click2eu_membership_status]
+      Existing compact membership status output; retained unchanged.
 
 UPDATE: redesigned from the user-provided Click2EU homepage HTML PLANS section.
 The plugin retains the v0.1.0 WooCommerce checkout behavior and original folder/slug.
