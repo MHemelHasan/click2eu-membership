@@ -59,8 +59,21 @@ final class Click2EU_Access {
 			if ( Click2EU_Auth::is_employer() ) {
 				$this->die_denial( $result );
 			}
+			if ( ! is_user_logged_in() ) {
+				$this->redirect_guest_to_auth( $result );
+			}
 			$this->redirect_to_join( $result );
 		}
+	}
+
+	private function redirect_guest_to_auth( $error ) {
+		$auth = Click2EU_Auth::cariera_auth_url();
+		if ( ! $auth || self::is_current_url( $auth ) ) {
+			$this->die_denial( $error );
+		}
+		nocache_headers();
+		wp_safe_redirect( $auth, 302, 'Click2EU Membership' );
+		exit;
 	}
 
 	private static function is_system_request() {
@@ -91,6 +104,10 @@ final class Click2EU_Access {
 		$current_path = trailingslashit( (string) wp_parse_url( home_url( wp_unslash( $_SERVER['REQUEST_URI'] ?? '/' ) ), PHP_URL_PATH ) );
 		$target_path  = trailingslashit( (string) wp_parse_url( $target, PHP_URL_PATH ) );
 		return $current_path && $target_path && $current_path === $target_path;
+	}
+
+	public static function is_same_request_url( $target ) {
+		return self::is_current_url( $target );
 	}
 
 	public function guard_listing_ajax() {

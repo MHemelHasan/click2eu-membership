@@ -2,6 +2,19 @@
 
 ## v0.7.4 Phase-1 candidate (release blocked)
 
+Final-polish deployment requirements:
+
+- Map a distinct, published Cariera Login / Registration page in Click2EU
+  Settings. If missing, the plugin intentionally uses `wp-login.php` with a
+  validated Join Us continuation and shows an administrator diagnostic.
+- Confirm Join Us is public and contains pricing only; the legacy
+  `click2eu_auth=1` query must redirect and must never render inline forms.
+- Purge page/CDN caches after activation so the 28px desktop and 20px mobile
+  notice spacing and notification-admin stylesheet are current.
+- Do not merge, deploy, or label v0.7.4 final until Candidate and Employer login,
+  registration, logout, Active/Dashboard routing, unpaid/Join routing, and
+  Cart/Checkout continuation pass with legitimately activated Cariera handlers.
+
 The feature branch introduces `Click2EU_Settings`, `Click2EU_Route_Policy` and
 server-side adapters in `Click2EU_Access`. It does not add or migrate a database
 table. The only new persisted value is the namespaced

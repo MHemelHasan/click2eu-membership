@@ -9,7 +9,7 @@ final class Click2EU_Cariera {
 		add_filter( 'pre_option_cariera_login_redirection_candidate', array( $this, 'force_candidate_redirect_mode' ) );
 		add_filter( 'cariera_login_candi_redirection_page', array( $this, 'candidate_landing_page' ) );
 		add_filter( 'login_redirect', array( $this, 'standard_login_redirect' ), 20, 3 );
-		add_filter( 'the_content', array( $this, 'show_authentication_forms' ), 20 );
+		add_action( 'template_redirect', array( $this, 'redirect_legacy_inline_auth' ), 8 );
 		add_action( 'init', array( $this, 'validate_cariera_registration_role' ), 0 );
 		add_action( 'cariera_dashboard_main_nav_end', array( $this, 'membership_dashboard_link' ) );
 	}
@@ -40,15 +40,15 @@ final class Click2EU_Cariera {
 		return Click2EU_Config::join_url();
 	}
 
-	public function show_authentication_forms( $content ) {
+	public function redirect_legacy_inline_auth() {
 		if ( is_user_logged_in() || ! is_page( Click2EU_Config::join_page_id() ) || '1' !== ( $_GET['click2eu_auth'] ?? '' ) ) {
-			return $content;
+			return;
 		}
-		$forms  = '<div class="c2eu-membership c2eu-authentication">';
-		$forms .= '<h2>' . esc_html__( 'Register or sign in to continue', 'click2eu-membership' ) . '</h2>';
-		$forms .= do_shortcode( '[cariera_login_form][cariera_registration_form]' );
-		$forms .= '</div>';
-		return $forms . $content;
+		$destination = Click2EU_Auth::cariera_auth_url();
+		if ( $destination && ! Click2EU_Access::is_same_request_url( $destination ) ) {
+			wp_safe_redirect( $destination, 302, 'Click2EU Membership' );
+			exit;
+		}
 	}
 
 	public function validate_cariera_registration_role() {

@@ -1,5 +1,26 @@
 # v0.8.0-A Independent Browser E2E Report
 
+## v0.7.4 RC1 final-polish evidence (2026-11-10)
+
+Real Chromium browser checks confirmed that direct guest Join remains public,
+the four cards and category selectors render, the warning-to-heading spacing is
+28px desktop and 20px under 600px, and neither direct Join nor the legacy auth
+query renders inline login/registration forms. The legacy query and an explicit
+guest Join submission reached the safe WordPress login fallback with Join Us as
+the local continuation because this LocalWP database has no published Login /
+Registration mapping. The Join submission created no WooCommerce cart cookie.
+
+A guest request to `/jobs/` returned 302, no-cache headers and
+`X-Redirect-By: Click2EU Membership`, then rendered the login fallback without
+job listings. Read-only runtime injection of a published mapping confirmed that
+the mapped page wins even while Cariera's layout option is `popup`.
+
+Desktop and 500px responsive screenshots are stored outside the plugin in
+`wp-content/releases/v0.7.4-rc1-evidence/`. Actual Cariera Candidate/Employer
+AJAX login, registration, password recovery, resume/application handlers and
+authenticated landing behavior remain BLOCKED because Cariera Core/Addons are
+not legitimately active in LocalWP.
+
 ## v0.7.4 redirect and Classic Checkout acceptance addendum (2026-11-10)
 
 Chrome 156 was driven through DevTools Protocol 1.3 using a separate disposable

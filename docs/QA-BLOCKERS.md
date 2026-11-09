@@ -2,10 +2,11 @@
 
 ## v0.7.4 Phase-1 launch decision: NO-GO
 
-The access-control implementation passed source, isolated WordPress, local HTTP
-and real Chrome routing/Classic Checkout checks. Critical real Cariera-handler
-evidence remains unavailable. The plugin remains version 0.7.3 on the feature
-branch. No v0.7.4 ZIP or `develop` merge is authorized by the current evidence.
+The access-control and final UI/authentication polish passed source, read-only
+WordPress runtime, local HTTP and real headless Chrome guest-routing checks.
+Critical real Cariera-handler evidence remains unavailable. The feature branch
+is now a v0.7.4 release candidate only; no final release, `develop` merge or
+deployment is authorized by the current evidence.
 
 Authenticated live diagnosis is also blocked. A disposable Chrome profile could
 reach the public host only through its password-protection redirect, and no live

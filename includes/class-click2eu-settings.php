@@ -120,6 +120,10 @@ final class Click2EU_Settings {
 			add_settings_error( self::OPTION, 'join_route_conflict', __( 'Join Us cannot also be My Account, Cart, Checkout, Submit Resume, Job Search or Company Listings.', 'click2eu-membership' ) );
 			$clean['pages']['join'] = 0;
 		}
+		if ( $join_id && $join_id === absint( $clean['pages']['login'] ?? 0 ) ) {
+			add_settings_error( self::OPTION, 'auth_route_conflict', __( 'Login / Registration must be a distinct page from Join Us.', 'click2eu-membership' ) );
+			$clean['pages']['login'] = 0;
+		}
 		foreach ( array( 'submit_resume', 'job_search', 'company_listings' ) as $protected_key ) {
 			if ( ! empty( $clean['pages'][ $protected_key ] ) && in_array( absint( $clean['pages'][ $protected_key ] ), $commerce_ids, true ) ) {
 				add_settings_error( self::OPTION, 'commerce_route_conflict_' . $protected_key, sprintf( __( '%s cannot reuse My Account, Cart or Checkout.', 'click2eu-membership' ), self::page_definitions()[ $protected_key ]['label'] ) );
@@ -204,5 +208,9 @@ final class Click2EU_Settings {
 			echo '<li><strong>' . esc_html( $definition['label'] ) . ':</strong> ' . ( $page_id && self::page_is_valid( $page_id ) ? '<a href="' . esc_url( get_permalink( $page_id ) ) . '">#' . esc_html( $page_id ) . ' ' . esc_html( get_the_title( $page_id ) ) . '</a>' : '<span class="c2eu-diagnostic-error">' . esc_html__( 'missing/unpublished', 'click2eu-membership' ) . '</span>' ) . '</li>';
 		}
 		echo '</ul>';
+		$login_page = self::page_id( 'login' );
+		if ( ! $login_page || $login_page === self::page_id( 'join' ) || ! self::page_is_valid( $login_page ) ) {
+			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Authentication page mapping requires attention.', 'click2eu-membership' ) . '</strong> ' . esc_html__( 'Guests are currently sent to the safe WordPress login fallback and then returned to Join Us. Map a published Cariera Login / Register page before launch.', 'click2eu-membership' ) . '</p></div>';
+		}
 	}
 }

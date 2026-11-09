@@ -1,5 +1,20 @@
 # Phase-1 Launch Configuration and Acceptance Checklist
 
+## v0.7.4 RC1 final acceptance additions
+
+- [x] Direct Join is public and contains no injected authentication forms.
+- [x] Legacy `click2eu_auth=1` redirects without a loop.
+- [x] Missing auth mapping falls back to WordPress login with local Join return.
+- [ ] On controlled QA, map and verify the published Cariera Login / Registration page.
+- [ ] Verify Candidate login: unpaid/Pending -> Join; Active -> Dashboard.
+- [ ] Verify Candidate registration -> clean Join with no automatic cart item.
+- [ ] Verify Employer login/registration keeps the Cariera employer destination.
+- [ ] Verify password reset, logout and all WooCommerce continuation routes.
+- [x] Notification admin CSS is scoped to Membership, Settings and Notifications.
+- [x] Notification counts and bounded pagination render without full-row scans.
+- [x] Uncertain notifications expose review guidance but no ordinary Retry action.
+- [ ] Approve final v0.7.4 only after legitimate Cariera browser acceptance.
+
 Status: **NO-GO until every critical staging row passes with legitimately active
 Cariera Core/Addons.** This checklist is preparation only and authorizes no live
 deployment.

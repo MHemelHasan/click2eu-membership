@@ -1,5 +1,22 @@
 # v0.8.0-A Integration Matrix
 
+## v0.7.4 RC1 final-polish matrix
+
+| Actor / request | Expected destination / response | Local result |
+|---|---|---|
+| Guest direct Join | Public pricing, no auth forms | PASS |
+| Guest legacy Join auth query | Mapped auth; safe WP fallback if missing | PASS (fallback exercised) |
+| Guest Join POST | Auth page; no cart/order | PASS |
+| Guest protected Jobs HTML | Auth page | PASS |
+| Logged unpaid/Pending protected HTML | Join | PASS by unchanged policy/source; authenticated browser NOT TESTED |
+| Active Candidate login | Candidate Dashboard | BLOCKED on real Cariera handler |
+| Candidate registration | Join | BLOCKED on real Cariera handler |
+| Employer authentication | Cariera employer destination, never Candidate Join | Unchanged source; BLOCKED on real Cariera handler |
+| Cart/Checkout/Order Pay/Received/My Account | Commerce bypass/continuation | Unchanged source; focused regression NOT TESTED this turn |
+| Protected REST/AJAX | Structured 401/403 | Unchanged source; prior coverage retained |
+| Notifications filters/counts/pagination | Read-only bounded admin view | PASS runtime render/source inspection |
+| Failed retry / Uncertain | Failed-only nonce action / no retry | PASS source inspection |
+
 ## v0.7.4 Phase-1 candidate matrix
 
 | Area / scenario | Status | Evidence source |

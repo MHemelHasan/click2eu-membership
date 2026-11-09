@@ -1,4 +1,4 @@
-Click2EU Membership (v0.7.3)
+Click2EU Membership (v0.7.4 release candidate)
 =======================================
 
 v0.7.4 PHASE-1 ACCESS CONTROL CANDIDATE (NOT RELEASED):
@@ -6,8 +6,9 @@ v0.7.4 PHASE-1 ACCESS CONTROL CANDIDATE (NOT RELEASED):
   resume HTML routes, AJAX, REST, search, feeds and sitemaps.
 - Adds WP Admin > Click2EU Memberships > Settings for environment-specific Page
   Mapping, fixed Phase-1 policy controls and non-sensitive diagnostics.
-- Guests and unpaid/Pending Candidates are redirected from protected HTML to
-  Join Us; non-HTML requests receive structured 401/403 responses.
+- Guests on protected HTML routes are redirected to the mapped Login /
+  Registration page; unpaid/Pending Candidates are redirected to Join Us.
+  Non-HTML requests continue to receive structured 401/403 responses.
 - Active Candidates receive exact purchased-category job access. Employers do
   not require Candidate membership, but job submission requires a published,
   owned company profile.
@@ -16,9 +17,14 @@ v0.7.4 PHASE-1 ACCESS CONTROL CANDIDATE (NOT RELEASED):
 - Removes the v0.7.3 Pending Join-to-Orders routing, preserves Cart/Checkout and
   Order Received continuations, and routes Cariera AJAX Candidate login through
   the membership-aware Join/Dashboard decision without changing vendor code.
-- This candidate remains version 0.7.3 and is not release-ready until legitimate
-  Cariera Core/Addons runtime browser E2E is completed. Do not deploy it as
-  v0.7.4 from the feature branch.
+- Join Us remains a clean public pricing page. Legacy `click2eu_auth=1` links and
+  guest Join submissions now use the dedicated authentication route, with a
+  validated WordPress-login fallback when that page is not mapped.
+- Notification diagnostics now provide counts, bounded pagination, status chips
+  and failed-only retry controls without changing queue or schema semantics.
+- This v0.7.4 release candidate is not release-ready until legitimate Cariera
+  Core/Addons runtime browser E2E is completed. Do not deploy or merge it from
+  the feature branch.
 
 v0.7.3 DASHBOARD FORM PRESERVATION:
 - Preserves the nonce-protected renewal and upgrade forms when rendering the

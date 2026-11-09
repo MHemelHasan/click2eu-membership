@@ -29,6 +29,7 @@ final class Click2EU_Admin {
 		$allowed_hooks = array(
 			'toplevel_page_' . self::PAGE_SLUG,
 			self::PAGE_SLUG . '_page_' . Click2EU_Settings::PAGE_SLUG,
+			self::PAGE_SLUG . '_page_' . Click2EU_Notifications::PAGE_SLUG,
 		);
 		if ( ! in_array( $hook, $allowed_hooks, true ) ) {
 			return;
