@@ -77,7 +77,12 @@ final class Click2EU_Memberships {
 
 	public static function get_membership_for_user( $user_id ) {
 		global $wpdb;
-		return $wpdb->get_row( $wpdb->prepare( "SELECT * FROM " . self::table_name() . " WHERE candidate_user_id = %d ORDER BY FIELD(status,'active','pending','suspended','cancelled','expired'), membership_id DESC LIMIT 1", absint( $user_id ) ) );
+		return $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT * FROM " . self::table_name() . " WHERE candidate_user_id = %d ORDER BY CASE WHEN status = 'active' THEN 0 WHEN status = 'pending' THEN 1 ELSE 2 END, membership_id DESC LIMIT 1",
+				absint( $user_id )
+			)
+		);
 	}
 
 	public static function get_membership_for_order( $order_id ) {
@@ -128,8 +133,9 @@ final class Click2EU_Memberships {
 		return absint( $wpdb->insert_id );
 	}
 
-	public static function activate_membership( $membership_id ) {
+	public static function activate_membership( $membership_id, &$conflicting_membership_id = 0 ) {
 		global $wpdb;
+		$conflicting_membership_id = 0;
 		$membership = self::get_membership( $membership_id );
 		if ( ! $membership ) {
 			return false;
@@ -153,9 +159,20 @@ final class Click2EU_Memberships {
 				return true;
 			}
 
-			$now = current_time( 'mysql', true );
-			$wpdb->query( $wpdb->prepare( 'UPDATE ' . self::table_name() . " SET status = 'suspended', updated_at = %s WHERE candidate_user_id = %d AND status = 'active' AND membership_id <> %d", $now, $membership->candidate_user_id, $membership_id ) );
+			$conflicting_membership_id = absint(
+				$wpdb->get_var(
+					$wpdb->prepare(
+						'SELECT membership_id FROM ' . self::table_name() . " WHERE candidate_user_id = %d AND status = 'active' AND membership_id <> %d ORDER BY membership_id DESC LIMIT 1",
+						absint( $membership->candidate_user_id ),
+						absint( $membership->membership_id )
+					)
+				)
+			);
+			if ( $conflicting_membership_id ) {
+				return false;
+			}
 
+			$now = current_time( 'mysql', true );
 			return false !== $wpdb->update(
 				self::table_name(),
 				array( 'status' => 'active', 'activated_at' => $now, 'updated_at' => $now ),

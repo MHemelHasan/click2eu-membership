@@ -1,6 +1,47 @@
-# Click2EU Membership 0.4.0 Test Report
+# Click2EU Membership 0.4.1 Test Report
 
-Dashboard test date: 2026-11-09 (Asia/Dhaka)
+Stability test date: 2026-11-09 (Asia/Dhaka)
+
+## 0.4.1 executed stability regression
+
+The test used isolated `example.invalid` Candidate accounts, local WooCommerce
+orders and temporary ledger records. No real order status transition,
+notification, payment or external request occurred. Every fixture was removed
+after execution.
+
+| Scenario | Result |
+|---|---|
+| No membership | PASS |
+| Pending membership | PASS |
+| Active membership | PASS |
+| Suspended-only history | PASS |
+| Cancelled-only history | PASS |
+| Older Suspended plus newer Cancelled selects Cancelled | PASS |
+| Older Cancelled plus newer Suspended selects Suspended | PASS |
+| Active plus multiple newer historical records selects Active | PASS |
+| Multiple Pending/history records select newest Pending | PASS |
+| One Pending order completes and activates normally | PASS |
+| Repeated completion does not duplicate notes or activation | PASS |
+| Second distinct completed order does not replace Active | PASS |
+| Conflict metadata records retained Active membership | PASS |
+| Repeated conflict handling is idempotent | PASS |
+| Serialized competing activation through advisory-lock path | PASS |
+| Refund/cancellation path suspends Active membership | PASS |
+| Status shortcode and dashboard agree on terminal history | PASS |
+| Dashboard labels completed conflict for review | PASS |
+| Both conflicting history records remain visible | PASS |
+| History pagination | PASS |
+| Existing pricing cards | PASS |
+| Existing checkout line metadata | PASS |
+| HPOS enabled and WooCommerce CRUD order access | PASS |
+| PHP syntax, every plugin PHP file | PASS |
+
+The competing activation test exercised the same serialized repository path
+used under the MySQL advisory lock. A truly simultaneous multi-process race was
+not generated; the lock acquisition/recheck/release implementation was also
+verified by static source inspection.
+
+## 0.4.0 dashboard integration tests
 
 ## 0.4.0 dashboard integration tests
 
