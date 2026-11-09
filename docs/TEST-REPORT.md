@@ -1,6 +1,56 @@
-# Click2EU Membership 0.4.1 Test Report
+# Click2EU Membership 0.5.0 Test Report
 
-Stability test date: 2026-11-09 (Asia/Dhaka)
+Expiration test date: 2026-11-09 (Asia/Dhaka)
+
+## 0.5.0 executed expiration regression
+
+The suite used an injected UTC clock, temporary `example.invalid` Candidates,
+local WooCommerce CRUD orders/items and isolated ledger rows. It did not change
+the operating-system clock, imported customers/orders, payment gateways or real
+email recipients. All test users, orders, rows and scheduled expiry actions were
+removed in `finally` cleanup.
+
+| Scenario | Result |
+|---|---|
+| Schema-v2 columns and version verification | PASS |
+| Existing unique order-item constraint preserved | PASS |
+| Basic activation snapshots and enforces 30 days | PASS |
+| Pro activation snapshots and enforces 90 days | PASS |
+| Premium activation snapshots and enforces 180 days | PASS |
+| Elite activation snapshots and enforces 365 days | PASS |
+| Pending and On-hold do not start duration | PASS |
+| Completed starts duration exactly once | PASS |
+| One second before expiry allows access | PASS |
+| Exact expiry timestamp denies access | PASS |
+| One second after expiry denies access | PASS |
+| Delayed cron cannot retain access | PASS |
+| Repeated expiration is idempotent | PASS |
+| Scheduled expiry hook performs Active to Expired | PASS |
+| Legacy Active without expiry remains Active | PASS |
+| Suspended and Cancelled audit states are preserved | PASS |
+| Expired then refunded records stronger Suspended audit state | PASS |
+| Expired Candidate creates a new Pending purchase | PASS |
+| New Pending grants no access | PASS |
+| New Completed approval activates repurchase | PASS |
+| Historical expired row and expiry remain unchanged | PASS |
+| Active Candidate remains blocked from another purchase | PASS |
+| v0.4.1 conflict-review behavior remains intact | PASS |
+| Dashboard shows expiry, remaining days and history expiry | PASS |
+| Status shortcode shows consistent expiry details | PASS |
+| UTC boundary and Asia/Dhaka conversion | PASS |
+| WP Job Manager category snapshot preserved | PASS |
+| Checkout category and duration metadata preserved | PASS |
+| HPOS enabled and WooCommerce CRUD succeeds | PASS |
+| Unique future expiration action detected | PASS |
+| PHP syntax, every plugin PHP file | PASS |
+
+Action Scheduler was available locally and used for individual expiration. The
+WP-Cron fallback and hourly reconciliation path were verified by source review;
+the fallback was not forced while Action Scheduler was active.
+
+Cariera registration/login and protected-feature browser E2E remain **BLOCKED**
+until legitimate local license activation. Full browser checkout submission and
+real cron timing under production traffic are **NOT TESTED**.
 
 ## 0.4.1 executed stability regression
 

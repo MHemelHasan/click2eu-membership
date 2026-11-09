@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Click2EU Membership
  * Description: Candidate membership packages, manual-payment activation, access control and WooCommerce integration for Click2EU.
- * Version: 0.4.1
+ * Version: 0.5.0
  * Requires Plugins: woocommerce
  * Requires PHP: 7.4
  * Author: HemelHasan
@@ -16,7 +16,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 require_once __DIR__ . '/includes/class-click2eu-config.php';
 require_once __DIR__ . '/includes/class-click2eu-auth.php';
+require_once __DIR__ . '/includes/class-click2eu-time.php';
 require_once __DIR__ . '/includes/class-click2eu-memberships.php';
+require_once __DIR__ . '/includes/class-click2eu-expiration.php';
 require_once __DIR__ . '/includes/class-click2eu-orders.php';
 require_once __DIR__ . '/includes/class-click2eu-access.php';
 require_once __DIR__ . '/includes/class-click2eu-cariera.php';
@@ -25,6 +27,8 @@ require_once __DIR__ . '/includes/class-click2eu-dashboard.php';
 
 register_activation_hook( __FILE__, array( 'Click2EU_Memberships', 'install' ) );
 register_activation_hook( __FILE__, array( 'Click2EU_Dashboard', 'activate' ) );
+register_activation_hook( __FILE__, array( 'Click2EU_Expiration', 'activate' ) );
+register_deactivation_hook( __FILE__, array( 'Click2EU_Expiration', 'deactivate' ) );
 
 /**
  * Uses WooCommerce CRUD for order and order-item metadata (HPOS-friendly).
@@ -37,7 +41,7 @@ add_action( 'before_woocommerce_init', function () {
 } );
 
 final class Click2EU_Membership_Phase_One {
-    private const VERSION = '0.4.1';
+    private const VERSION = '0.5.0';
 
     /** Phase 1: existing, separately-created WooCommerce simple products. */
     private const PRODUCTS = array(
@@ -45,11 +49,6 @@ final class Click2EU_Membership_Phase_One {
         'pro'     => 11869,
         'premium' => 11870,
         'elite'   => 11871,
-    );
-
-    /** Text-only durations: Phase 1 never creates or expires access. */
-    private const DISPLAY_DAYS = array(
-        'basic' => 30, 'pro' => 90, 'premium' => 180, 'elite' => 365,
     );
 
     /** Feature copy from the user's reference HTML. Product short descriptions override this. */
@@ -245,9 +244,9 @@ final class Click2EU_Membership_Phase_One {
         $price_args = ( is_numeric( $display_price ) && abs( (float) $display_price - round( (float) $display_price ) ) < 0.00001 ) ? array( 'decimals' => 0 ) : array();
         $html .= '<div class="c2eu-package-card__price">' . wp_kses_post( wc_price( $display_price, $price_args ) ) . '</div>';
 
-        // Display-only 30/90/180/365 days to match the supplied design.
-        if ( 'yes' === strtolower( $atts['show_duration'] ) && isset( self::DISPLAY_DAYS[ $tier ] ) ) {
-            $days = self::DISPLAY_DAYS[ $tier ];
+        // Display the trusted server-side term used for new membership snapshots.
+        $days = Click2EU_Config::duration_for_package( $tier );
+        if ( 'yes' === strtolower( $atts['show_duration'] ) && $days ) {
             $html .= '<p class="c2eu-package-card__duration">' . esc_html( $days ) . ' days';
             if ( 'yes' === strtolower( $atts['show_day_rate'] ) && function_exists( 'wc_get_price_to_display' ) && is_numeric( $product->get_price() ) ) {
                 $daily = wc_get_price_to_display( $product ) / $days;
@@ -496,6 +495,7 @@ final class Click2EU_Membership_Phase_One {
         $item->update_meta_data( 'Job Category', sanitize_text_field( $cart_item['click2eu_category_name'] ) );
         $item->update_meta_data( '_click2eu_category_id', absint( $cart_item['click2eu_category_id'] ?? 0 ) );
         $item->update_meta_data( '_click2eu_package', sanitize_key( $cart_item['click2eu_package'] ?? '' ) );
+        $item->update_meta_data( '_click2eu_duration_days', Click2EU_Config::duration_for_package( $cart_item['click2eu_package'] ?? '' ) );
         $details = $this->readable_description( $cart_item['product_id'] ?? 0 );
         if ( $details ) {
             $item->update_meta_data( 'Package Includes', $details );
@@ -524,6 +524,7 @@ final class Click2EU_Membership_Phase_One {
             $order->update_meta_data( '_click2eu_package', sanitize_key( $cart_item['click2eu_package'] ?? '' ) );
             $order->update_meta_data( '_click2eu_category_id', absint( $cart_item['click2eu_category_id'] ?? 0 ) );
             $order->update_meta_data( '_click2eu_category_name', sanitize_text_field( $cart_item['click2eu_category_name'] ) );
+            $order->update_meta_data( '_click2eu_duration_days', Click2EU_Config::duration_for_package( $cart_item['click2eu_package'] ?? '' ) );
 
             // Store API / block checkout needs a separate path for order LINE metadata.
             foreach ( $order->get_items( 'line_item' ) as $item ) {
@@ -555,3 +556,4 @@ new Click2EU_Access();
 new Click2EU_Cariera();
 new Click2EU_Status();
 new Click2EU_Dashboard();
+new Click2EU_Expiration();

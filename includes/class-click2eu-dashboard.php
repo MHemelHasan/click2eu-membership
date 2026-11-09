@@ -123,6 +123,10 @@ final class Click2EU_Dashboard {
 		$html .= $this->detail_row( __( 'Order', 'click2eu-membership' ), $order ? '#' . $order->get_order_number() : __( 'Order unavailable', 'click2eu-membership' ) );
 		$html .= $this->detail_row( __( 'Payment / Order Status', 'click2eu-membership' ), $order ? wc_get_order_status_name( $order->get_status() ) : __( 'Unavailable', 'click2eu-membership' ) );
 		$html .= $this->detail_row( __( 'Activation Date', 'click2eu-membership' ), $this->activation_date( $membership ) );
+		$html .= $this->detail_row( __( 'Expiration Date', 'click2eu-membership' ), $this->expiration_date( $membership ) );
+		if ( 'active' === $status ) {
+			$html .= $this->detail_row( __( 'Remaining', 'click2eu-membership' ), $this->remaining_days( $membership ) );
+		}
 		$html .= '</dl><div class="c2eu-dashboard__actions">';
 
 		if ( $order ) {
@@ -132,6 +136,8 @@ final class Click2EU_Dashboard {
 			$html .= '<a class="c2eu-dashboard__link" href="' . esc_url( Click2EU_Auth::my_orders_url() ) . '">' . esc_html__( 'View My Orders', 'click2eu-membership' ) . '</a>';
 		} elseif ( $conflict ) {
 			$html .= '<span class="c2eu-dashboard__support">' . esc_html__( 'Payment is complete. Please contact customer support while an administrator reviews activation.', 'click2eu-membership' ) . '</span>';
+		} elseif ( 'expired' === $status ) {
+			$html .= '<a class="c2eu-dashboard__button" href="' . esc_url( Click2EU_Config::join_url() ) . '">' . esc_html__( 'Renew Membership', 'click2eu-membership' ) . '</a>';
 		} elseif ( 'suspended' === $status && ! $order ) {
 			$html .= '<span class="c2eu-dashboard__support">' . esc_html__( 'Please contact customer support for assistance.', 'click2eu-membership' ) . '</span>';
 		}
@@ -154,6 +160,7 @@ final class Click2EU_Dashboard {
 		$html .= '<th scope="col">' . esc_html__( 'Order', 'click2eu-membership' ) . '</th>';
 		$html .= '<th scope="col">' . esc_html__( 'Status', 'click2eu-membership' ) . '</th>';
 		$html .= '<th scope="col">' . esc_html__( 'Activated', 'click2eu-membership' ) . '</th>';
+		$html .= '<th scope="col">' . esc_html__( 'Expires', 'click2eu-membership' ) . '</th>';
 		$html .= '<th scope="col"><span class="screen-reader-text">' . esc_html__( 'Action', 'click2eu-membership' ) . '</span></th></tr></thead><tbody>';
 
 		foreach ( $memberships as $membership ) {
@@ -167,6 +174,7 @@ final class Click2EU_Dashboard {
 			$html .= '<td data-label="' . esc_attr__( 'Order', 'click2eu-membership' ) . '">' . esc_html( $order ? '#' . $order->get_order_number() : __( 'Unavailable', 'click2eu-membership' ) ) . '</td>';
 			$html .= '<td data-label="' . esc_attr__( 'Status', 'click2eu-membership' ) . '">' . $this->status_badge( sanitize_key( $membership->status ), $conflict ) . '</td>';
 			$html .= '<td data-label="' . esc_attr__( 'Activated', 'click2eu-membership' ) . '">' . esc_html( $this->activation_date( $membership ) ) . '</td>';
+			$html .= '<td data-label="' . esc_attr__( 'Expires', 'click2eu-membership' ) . '">' . esc_html( $this->expiration_date( $membership ) ) . '</td>';
 			$html .= '<td data-label="' . esc_attr__( 'Action', 'click2eu-membership' ) . '">';
 			if ( $order ) {
 				$html .= '<a class="c2eu-dashboard__table-link" href="' . esc_url( $order->get_view_order_url() ) . '">' . esc_html__( 'View Order', 'click2eu-membership' ) . '</a>';
@@ -218,6 +226,21 @@ final class Click2EU_Dashboard {
 			return __( 'Not available', 'click2eu-membership' );
 		}
 		return get_date_from_gmt( $membership->activated_at, get_option( 'date_format' ) );
+	}
+
+	private function expiration_date( $membership ) {
+		if ( empty( $membership->expires_at ) || '0000-00-00 00:00:00' === $membership->expires_at ) {
+			return 'active' === $membership->status ? __( 'Expiration not configured', 'click2eu-membership' ) : __( 'Not started', 'click2eu-membership' );
+		}
+		return get_date_from_gmt( $membership->expires_at, get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) );
+	}
+
+	private function remaining_days( $membership ) {
+		$days = Click2EU_Expiration::remaining_days( $membership );
+		if ( null === $days ) {
+			return __( 'Expiration not configured', 'click2eu-membership' );
+		}
+		return sprintf( _n( '%d day', '%d days', $days, 'click2eu-membership' ), $days );
 	}
 
 	private function status_message( $status, $conflict = false ) {

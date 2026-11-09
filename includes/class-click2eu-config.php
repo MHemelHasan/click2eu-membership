@@ -5,8 +5,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class Click2EU_Config {
-	const VERSION           = '0.4.1';
-	const DB_VERSION        = '1.0.0';
+	const VERSION           = '0.5.0';
+	const DB_VERSION        = '2.0.0';
 	const JOIN_PAGE_OPTION  = 'click2eu_join_page_id';
 	const DB_VERSION_OPTION = 'click2eu_membership_db_version';
 
@@ -22,6 +22,25 @@ final class Click2EU_Config {
 		);
 
 		return is_array( $products ) ? array_map( 'absint', $products ) : array();
+	}
+
+	public static function durations() {
+		$durations = apply_filters(
+			'click2eu_membership_durations',
+			array(
+				'basic'   => 30,
+				'pro'     => 90,
+				'premium' => 180,
+				'elite'   => 365,
+			)
+		);
+		return is_array( $durations ) ? array_map( 'absint', $durations ) : array();
+	}
+
+	public static function duration_for_package( $package ) {
+		$durations = self::durations();
+		$package   = sanitize_key( $package );
+		return isset( $durations[ $package ] ) ? absint( $durations[ $package ] ) : 0;
 	}
 
 	public static function package_for_product( $product_id ) {

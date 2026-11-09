@@ -99,11 +99,12 @@ final class Click2EU_Orders {
 			}
 			$category_id = absint( $item->get_meta( '_click2eu_category_id', true ) );
 			$label       = sanitize_text_field( $item->get_meta( 'Job Category', true ) );
+			$duration    = absint( $item->get_meta( '_click2eu_duration_days', true ) );
 			$term        = $category_id ? get_term( $category_id, 'job_listing_category' ) : null;
 			if ( ! $term || is_wp_error( $term ) || '' === $label ) {
 				continue;
 			}
-			$membership_id = Click2EU_Memberships::create_pending( $order, $item, $package, $category_id, $label );
+			$membership_id = Click2EU_Memberships::create_pending( $order, $item, $package, $category_id, $label, $duration );
 			if ( $membership_id ) {
 				$order->update_meta_data( '_click2eu_membership_id', $membership_id );
 				$order->save();
@@ -120,7 +121,7 @@ final class Click2EU_Orders {
 
 		if ( in_array( $to, array( 'failed', 'cancelled', 'refunded' ), true ) ) {
 			Click2EU_Memberships::suspend_order( $order_id );
-			$order->update_meta_data( '_click2eu_membership_suspended', current_time( 'mysql', true ) );
+			$order->update_meta_data( '_click2eu_membership_suspended', Click2EU_Time::mysql() );
 			$order->add_order_note( __( 'Click2EU Candidate membership suspended after order reversal.', 'click2eu-membership' ) );
 			$order->save();
 			return;
@@ -138,13 +139,13 @@ final class Click2EU_Orders {
 			return;
 		}
 		$conflicting_membership_id = 0;
-		if ( Click2EU_Memberships::activate_membership( $membership->membership_id, $conflicting_membership_id ) ) {
+		if ( Click2EU_Memberships::activate_membership( $membership->membership_id, $conflicting_membership_id, $order ) ) {
 			$order->update_meta_data( '_click2eu_membership_activated', absint( $membership->membership_id ) );
 			$order->add_order_note( __( 'Click2EU Candidate membership activated.', 'click2eu-membership' ) );
 			$order->save();
 		} elseif ( $conflicting_membership_id ) {
 			$order->update_meta_data( self::ACTIVATION_CONFLICT_META, $conflicting_membership_id );
-			$order->update_meta_data( self::ACTIVATION_CONFLICT_AT_META, current_time( 'mysql', true ) );
+			$order->update_meta_data( self::ACTIVATION_CONFLICT_AT_META, Click2EU_Time::mysql() );
 			$order->add_order_note( __( 'Click2EU membership activation blocked: this Candidate already has a different active membership. Manual administrator review is required.', 'click2eu-membership' ) );
 			$order->save();
 		}
