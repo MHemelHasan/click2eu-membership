@@ -228,3 +228,36 @@ coordinating the production license.
 
 Historical logs show prior PHP 8.2 requests failed Contact Form 7's PHP >=8.3
 requirement. The current LocalWP web process is PHP 8.4 and should remain there.
+## 0.6.1 executed upgrade regression
+
+The local suite used injected UTC time, temporary `example.invalid` Candidate
+users, isolated ledger records, and HPOS WooCommerce CRUD orders/items. It sent no
+notification or external payment and removed every fixture, including recovery
+cleanup from an interrupted harness run.
+
+| Scenario | Result |
+|---|---|
+| Basic targets Pro, Premium, Elite | PASS |
+| Pro targets Premium, Elite; Premium targets Elite | PASS |
+| Same package, downgrade and invalid target rejected | PASS |
+| Basic-to-Pro half-term basis €8, credit €4, charge €11 | PASS |
+| One-second remaining credit/charge remain bounded | PASS |
+| Tax-enabled calculation fails closed | PASS |
+| Pending payment preserves original Active access | PASS |
+| Completed approval activates target and marks source Upgraded | PASS |
+| Target receives full 90-day term from approval | PASS |
+| Duplicate completion is idempotent | PASS |
+| Source credit is marked consumed once | PASS |
+| Source-order reversal suspends target; source is not restored | PASS |
+| HPOS enabled and WooCommerce CRUD fixtures | PASS |
+| PHP syntax, every plugin PHP file | PASS |
+
+Static review additionally confirmed same-category enforcement, legacy/no-expiry
+rejection, pending/scheduled conflict rejection, immutable order metadata, coupon
+rejection, zero-charge manual approval, rollback on partial ledger transition,
+admin capability enforcement, and existing renewal/expiration code paths.
+
+Not executed: full browser checkout/Block checkout E2E, genuine simultaneous
+multi-process approval load, gateway webhooks, tax-inclusive stores, or production
+payment/refund behavior. Cariera browser E2E remains BLOCKED pending legitimate
+license activation. These limitations prevent a production-ready designation.

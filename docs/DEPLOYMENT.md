@@ -258,3 +258,34 @@ orders, configuration and content.
    Scheduled rows and queued starts; v0.5.0 does not understand that state.
 8. Never delete renewal columns or Scheduled rows during rollback. Restore
    v0.6.0 and reconcile them after the incident is resolved.
+## 0.6.1 mid-term upgrades
+
+No database columns or indexes are added. Existing `renewal_of_membership_id`
+links the upgrade row to its source and `renewal_type=upgrade` distinguishes it
+from renewal. The source ledger status becomes the auditable terminal state
+`upgraded`; its original activation and expiry timestamps remain unchanged.
+
+Financial policy:
+
+- Eligible source basis is the actually paid, post-coupon membership line total,
+  less item-attributed refunds, capped by the order total.
+- Credit is `basis × remaining_seconds / (duration_days × 86400)`, capped at the
+  unrefunded basis and rounded with WooCommerce currency precision.
+- Charge is the current trusted target product price less credit, never below zero.
+- Taxes must be disabled, currencies must match, order-level/unattributed refunds
+  are rejected, and coupons are rejected on the upgrade order.
+- Example at exactly half of Basic's 30-day €8 term: €4 credit; Pro at €15 costs
+  €11. With one second remaining, the rounded credit is €0.00 and Pro costs €15.
+
+The Candidate submits a nonce-protected server quote. Checkout reuses the normal
+WooCommerce order and manual gateway flow. Order and line metadata freeze source
+membership/order, target package/category, quote time, paid basis, credit, target
+price, final charge, currency and calculation version. Completed approval rechecks
+ownership, currency, source effectiveness/payment/refunds, target/category, frozen
+total, conflicting rows and one-time credit consumption under the Candidate advisory
+lock. The old/new ledger update uses one database transaction.
+
+Do not enable automatic calculation after enabling taxes. Version 0.6.1 fails
+closed until an explicit tax-credit policy is implemented and tested. Refunds or
+other complex reversals are flagged for manual financial review; the plugin issues
+no cash refund and never automatically restores the upgraded source membership.
