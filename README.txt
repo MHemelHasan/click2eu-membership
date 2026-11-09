@@ -186,3 +186,24 @@ An approved upgrade marks the previous ledger row Upgraded, activates the target
 for its full new duration, preserves the previous expiry for audit, and consumes
 the source credit once. Refunds never automatically restore the previous term or
 issue cash for unused credit.
+Click2EU Membership 0.6.2
+=========================
+
+Version 0.6.2 is a focused financial-integrity patch. Refund processing now
+traverses the complete same-Candidate upgrade lineage with cycle detection and a
+100-node safety bound. Any active membership whose payment ancestry becomes
+invalid is suspended; pending/scheduled descendants are cancelled. Historical
+Upgraded records remain intact and no previous membership is restored.
+
+Both full and partial WooCommerce refund hooks are handled idempotently. Refund
+fingerprints prevent overlapping callbacks from duplicating audit work, while
+unrelated orders and cross-user malformed lineage are never mutated.
+
+Upgrade finalization is recoverable after the custom-ledger transaction commits.
+Source-credit consumption, expiration scheduling, target activation metadata and
+notes are individually idempotent and reconciled on a later request without
+requiring another order-status transition. Recovery revalidates the source payment.
+
+Zero-total upgrades require the WooCommerce order action "Approve zero-total
+Click2EU upgrade" from an administrator with WooCommerce management capability.
+Completed status alone never activates a zero-total upgrade.

@@ -289,3 +289,30 @@ Do not enable automatic calculation after enabling taxes. Version 0.6.1 fails
 closed until an explicit tax-credit policy is implemented and tested. Refunds or
 other complex reversals are flagged for manual financial review; the plugin issues
 no cash refund and never automatically restores the upgraded source membership.
+## 0.6.2 financial-integrity recovery
+
+No schema migration is required. Before deployment, retain the v0.6.1 database
+and plugin backup. Version 0.6.2 adds these runtime safeguards:
+
+- `woocommerce_order_refunded` and `woocommerce_order_partially_refunded` both
+  trigger payment-lineage validation. Equivalent callbacks share a refund-total
+  fingerprint and are idempotent.
+- Lineage follows `renewal_of_membership_id` only where `renewal_type=upgrade`,
+  remains scoped to one Candidate, detects cycles, and stops after 100 nodes.
+- A reversal suspends Active affected rows, cancels Pending/Scheduled affected
+  rows, preserves terminal history, adds order notes, and requests review. It
+  never restores an earlier membership or creates a cash refund.
+- Cross-user malformed children are noted but not mutated. Missing records and
+  excessive lineage are fail-closed for discovered same-user access and require
+  administrator review.
+- Post-transaction finalization writes the source consumption marker, schedules
+  expiry, then writes target activation metadata. Each step can be retried. The
+  activation marker is written only after scheduling succeeds.
+- `init` reconciles at most 50 incomplete Active upgrade finalizations per request.
+  Source payment basis and zero-total approval are revalidated during recovery.
+
+For a zero-total upgrade, open its WooCommerce order and run **Order actions →
+Approve zero-total Click2EU upgrade**. The user must have `manage_woocommerce`.
+The action is recorded with UTC time and administrator ID. Completed status by
+itself is insufficient. Positive BACS/manual-payment orders continue to activate
+only through the existing Completed workflow.
