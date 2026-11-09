@@ -50,11 +50,13 @@ final class Click2EU_Notifications {
 			source_id bigint(20) unsigned NOT NULL,
 			status varchar(20) NOT NULL DEFAULT 'queued',
 			scheduled_at datetime NOT NULL,
+			event_due_at datetime NULL,
 			attempt_count smallint(5) unsigned NOT NULL DEFAULT 0,
 			lease_until datetime NULL,
 			last_attempt_at datetime NULL,
 			sent_at datetime NULL,
 			last_error varchar(500) NOT NULL DEFAULT '',
+			review_note varchar(500) NOT NULL DEFAULT '',
 			admin_retry_by bigint(20) unsigned NOT NULL DEFAULT 0,
 			admin_retry_at datetime NULL,
 			created_at datetime NOT NULL,
@@ -68,6 +70,7 @@ final class Click2EU_Notifications {
 			KEY user_event (user_id,event_type)
 		) {$charset};";
 		dbDelta( $sql );
+		self::backfill_event_due_at();
 		update_option( Click2EU_Config::NOTIFICATION_DB_VERSION_OPTION, Click2EU_Config::NOTIFICATION_DB_VERSION, false );
 		if ( ! get_option( self::CUTOVER_OPTION ) ) {
 			add_option( self::CUTOVER_OPTION, Click2EU_Time::mysql(), '', false );
@@ -82,6 +85,23 @@ final class Click2EU_Notifications {
 		if ( ! $table_exists || Click2EU_Config::NOTIFICATION_DB_VERSION !== get_option( Click2EU_Config::NOTIFICATION_DB_VERSION_OPTION ) ) {
 			self::install();
 		}
+	}
+
+	/** Backfill v0.7.1 rows without changing status, attempts or accepted history. */
+	private static function backfill_event_due_at() {
+		global $wpdb;
+		$wpdb->query( 'UPDATE ' . self::table_name() . " SET event_due_at=scheduled_at WHERE event_due_at IS NULL AND event_type NOT LIKE 'membership_expiring_%'" );
+		do {
+			$rows = $wpdb->get_results( 'SELECT notification_id,event_type,source_id,scheduled_at FROM ' . self::table_name() . " WHERE event_due_at IS NULL AND event_type LIKE 'membership_expiring_%' ORDER BY notification_id ASC LIMIT 200" );
+			foreach ( $rows as $row ) {
+				$membership = Click2EU_Memberships::get_membership( $row->source_id );
+				$days       = absint( substr( $row->event_type, strlen( 'membership_expiring_' ) ) );
+				$due        = $membership && $days && ! empty( $membership->expires_at )
+					? Click2EU_Time::mysql( Click2EU_Time::timestamp( $membership->expires_at ) - ( $days * DAY_IN_SECONDS ) )
+					: $row->scheduled_at;
+				$wpdb->query( $wpdb->prepare( 'UPDATE ' . self::table_name() . ' SET event_due_at=%s WHERE notification_id=%d AND event_due_at IS NULL', $due, $row->notification_id ) );
+			}
+		} while ( 200 === count( $rows ) );
 	}
 
 	public static function deactivate() {
@@ -112,6 +132,7 @@ final class Click2EU_Notifications {
 			'upgrade_review_required'       => 'admin',
 			'invalid_payment_lineage'       => 'admin',
 			'notification_delivery_failure' => 'admin',
+			'notification_delivery_uncertain' => 'admin',
 		);
 	}
 
@@ -183,15 +204,16 @@ final class Click2EU_Notifications {
 		if ( ! $event_key || strlen( $event_key ) > 191 || ! isset( $registry[ $event_type ] ) || ! in_array( $source_type, array( 'membership', 'order', 'notification' ), true ) || ! absint( $source_id ) ) { return 0; }
 		$scheduled_timestamp = null === $scheduled_timestamp ? Click2EU_Time::now() : (int) $scheduled_timestamp;
 		$now = Click2EU_Time::mysql();
+		$event_due_at = Click2EU_Time::mysql( $scheduled_timestamp );
 		$ok = $wpdb->query( $wpdb->prepare(
-			'INSERT IGNORE INTO ' . self::table_name() . ' (event_key,event_type,user_id,source_type,source_id,status,scheduled_at,created_at,updated_at) VALUES (%s,%s,%d,%s,%d,%s,%s,%s,%s)',
+			'INSERT IGNORE INTO ' . self::table_name() . ' (event_key,event_type,user_id,source_type,source_id,status,scheduled_at,event_due_at,created_at,updated_at) VALUES (%s,%s,%d,%s,%d,%s,%s,%s,%s,%s)',
 			$event_key, $event_type, absint( $user_id ), $source_type, absint( $source_id ), 'queued',
-			Click2EU_Time::mysql( max( Click2EU_Time::now(), $scheduled_timestamp ) ), $now, $now
+			Click2EU_Time::mysql( max( Click2EU_Time::now(), $scheduled_timestamp ) ), $event_due_at, $now, $now
 		) );
 		if ( 1 !== $ok ) {
 			$existing = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . self::table_name() . ' WHERE event_key = %s', $event_key ) );
 			if ( $existing && 'cancelled' === $existing->status && 0 === strpos( $event_type, 'membership_expiring_' ) && $scheduled_timestamp > Click2EU_Time::now() ) {
-				$wpdb->update( self::table_name(), array( 'status' => 'queued', 'scheduled_at' => Click2EU_Time::mysql( $scheduled_timestamp ), 'attempt_count' => 0, 'lease_until' => null, 'last_error' => '', 'updated_at' => $now ), array( 'notification_id' => $existing->notification_id ) );
+				$wpdb->query( $wpdb->prepare( 'UPDATE ' . self::table_name() . " SET status='queued',scheduled_at=%s,event_due_at=COALESCE(event_due_at,%s),attempt_count=0,lease_until=NULL,last_error='',updated_at=%s WHERE notification_id=%d AND status='cancelled'", Click2EU_Time::mysql( $scheduled_timestamp ), $event_due_at, $now, $existing->notification_id ) );
 				self::schedule_delivery( $existing->notification_id, $scheduled_timestamp );
 			}
 			return $existing ? absint( $existing->notification_id ) : 0;
@@ -298,7 +320,10 @@ final class Click2EU_Notifications {
 				if ( 'active' !== $membership->status || ! Click2EU_Expiration::is_effectively_active( $membership ) || empty( $membership->expires_at ) || self::has_scheduled_renewal( $membership ) ) { return new WP_Error( 'stale_event', __( 'Expiry reminder is no longer applicable.', 'click2eu-membership' ) ); }
 				$days = absint( substr( $type, strlen( 'membership_expiring_' ) ) );
 				$target = Click2EU_Time::timestamp( $membership->expires_at ) - ( $days * DAY_IN_SECONDS );
-				if ( abs( Click2EU_Time::timestamp( $notification->scheduled_at ) - $target ) > 60 ) { return new WP_Error( 'stale_event', __( 'Expiry timestamp changed.', 'click2eu-membership' ) ); }
+				$expected_key = 'membership:' . absint( $membership->membership_id ) . ':expiry-warning:' . $days . 'd';
+				$event_due = Click2EU_Time::timestamp( $notification->event_due_at ?? null );
+				if ( ! $days || ! hash_equals( $expected_key, $notification->event_key ) || ! $event_due || abs( $event_due - $target ) > 60 ) { return new WP_Error( 'stale_event', __( 'Expiry reminder identity or original due time changed.', 'click2eu-membership' ) ); }
+				if ( Click2EU_Time::now() + 60 < $target ) { return new WP_Error( 'stale_event', __( 'Expiry reminder is not due yet.', 'click2eu-membership' ) ); }
 			}
 			if ( 'membership_expired' === $type && ( 'expired' !== $membership->status || self::has_active_successor( $membership ) ) ) { return new WP_Error( 'stale_event', __( 'Membership expiration notice is no longer applicable.', 'click2eu-membership' ) ); }
 			if ( 'membership_suspended' === $type && 'suspended' !== $membership->status ) { return new WP_Error( 'stale_event', __( 'Membership is not suspended.', 'click2eu-membership' ) ); }
@@ -312,7 +337,9 @@ final class Click2EU_Notifications {
 			if ( 'invalid_payment_lineage' === $type && ! $order->get_meta( Click2EU_Upgrades::REVIEW_META, true ) ) { return new WP_Error( 'stale_event', __( 'Payment-lineage review marker is unavailable.', 'click2eu-membership' ) ); }
 		} elseif ( 'notification' === $notification->source_type ) {
 			$source = self::get( $notification->source_id );
-			if ( 'notification_delivery_failure' !== $type || ! $source || 'failed' !== $source->status ) { return new WP_Error( 'stale_event', __( 'Delivery failure is no longer current.', 'click2eu-membership' ) ); }
+			$valid_failure = 'notification_delivery_failure' === $type && $source && 'failed' === $source->status;
+			$valid_uncertain = 'notification_delivery_uncertain' === $type && $source && 'uncertain' === $source->status;
+			if ( ! $valid_failure && ! $valid_uncertain ) { return new WP_Error( 'stale_event', __( 'Delivery review state is no longer current.', 'click2eu-membership' ) ); }
 		}
 		return true;
 	}
@@ -361,9 +388,24 @@ final class Click2EU_Notifications {
 	public static function run_queue() {
 		global $wpdb;
 		$now = Click2EU_Time::mysql();
+		$recovered = self::recover_uncertain_final_attempts( $now );
 		$ids = $wpdb->get_col( $wpdb->prepare( 'SELECT notification_id FROM ' . self::table_name() . " WHERE attempt_count<%d AND scheduled_at<=%s AND (status='queued' OR (status='processing' AND lease_until<%s)) ORDER BY scheduled_at ASC,notification_id ASC LIMIT 25", self::MAX_ATTEMPTS, $now, $now ) );
 		foreach ( $ids as $notification_id ) { self::deliver( $notification_id ); }
-		return count( $ids );
+		return $recovered + count( $ids );
+	}
+
+	private static function recover_uncertain_final_attempts( $now ) {
+		global $wpdb;
+		$ids = $wpdb->get_col( $wpdb->prepare( 'SELECT notification_id FROM ' . self::table_name() . " WHERE status='processing' AND attempt_count>=%d AND lease_until<%s ORDER BY lease_until ASC,notification_id ASC LIMIT 25", self::MAX_ATTEMPTS, $now ) );
+		$recovered = 0;
+		foreach ( $ids as $notification_id ) {
+			$message = __( 'Final transport outcome is unknown after the worker lease expired. Automatic resend is suppressed pending administrator review.', 'click2eu-membership' );
+			$updated = $wpdb->query( $wpdb->prepare( 'UPDATE ' . self::table_name() . " SET status='uncertain',lease_until=NULL,review_note=%s,updated_at=%s WHERE notification_id=%d AND status='processing' AND attempt_count>=%d AND lease_until<%s", $message, $now, $notification_id, self::MAX_ATTEMPTS, $now ) );
+			if ( 1 !== $updated ) { continue; }
+			++$recovered;
+			self::queue( 'notification:' . absint( $notification_id ) . ':delivery-uncertain', 'notification_delivery_uncertain', 0, 'notification', $notification_id );
+		}
+		return $recovered;
 	}
 
 	public static function ensure_cleanup_schedule() {
@@ -397,7 +439,7 @@ final class Click2EU_Notifications {
 	public function render_admin_page() {
 		if ( ! current_user_can( Click2EU_Admin::CAPABILITY ) ) { wp_die( esc_html__( 'You are not allowed to view notification diagnostics.', 'click2eu-membership' ), '', array( 'response' => 403 ) ); }
 		global $wpdb;
-		$allowed = array( 'all', 'queued', 'processing', 'accepted', 'failed', 'cancelled' );
+		$allowed = array( 'all', 'queued', 'processing', 'accepted', 'failed', 'uncertain', 'cancelled' );
 		$filter = sanitize_key( wp_unslash( $_GET['notification_status'] ?? 'all' ) );
 		$filter = in_array( $filter, $allowed, true ) ? $filter : 'all';
 		$where = 'all' === $filter ? '' : $wpdb->prepare( ' WHERE status=%s', $filter );
@@ -407,10 +449,11 @@ final class Click2EU_Notifications {
 			$url = add_query_arg( array( 'page' => self::PAGE_SLUG, 'notification_status' => $status ), admin_url( 'admin.php' ) );
 			echo '<a class="' . esc_attr( $filter === $status ? 'current' : '' ) . '" href="' . esc_url( $url ) . '">' . esc_html( ucfirst( $status ) ) . '</a> ';
 		}
-		echo '</nav><table class="widefat striped"><thead><tr><th>ID / Event</th><th>Source</th><th>Candidate</th><th>Status</th><th>Scheduled</th><th>Attempts</th><th>Last attempt</th><th>Accepted</th><th>Error / Action</th></tr></thead><tbody>';
+		echo '</nav><table class="widefat striped"><thead><tr><th>ID / Event</th><th>Source</th><th>Candidate</th><th>Status</th><th>Event due / Next attempt</th><th>Attempts</th><th>Last attempt</th><th>Accepted</th><th>Error / Review / Action</th></tr></thead><tbody>';
 		if ( ! $rows ) { echo '<tr><td colspan="9">' . esc_html__( 'No notification records found.', 'click2eu-membership' ) . '</td></tr>'; }
 		foreach ( $rows as $row ) {
-			echo '<tr><td>#' . esc_html( $row->notification_id ) . '<br><strong>' . esc_html( Click2EU_Notification_Templates::event_title( $row->event_type ) ) . '</strong></td><td>' . esc_html( $row->source_type . ' #' . $row->source_id ) . '</td><td>' . esc_html( $row->user_id ?: '—' ) . '</td><td>' . esc_html( ucfirst( $row->status ) ) . '</td><td>' . esc_html( self::admin_date( $row->scheduled_at ) ) . '</td><td>' . esc_html( $row->attempt_count . '/' . self::MAX_ATTEMPTS ) . '</td><td>' . esc_html( self::admin_date( $row->last_attempt_at ) ) . '</td><td>' . esc_html( self::admin_date( $row->sent_at ) ) . '</td><td>' . esc_html( $row->last_error );
+			echo '<tr><td>#' . esc_html( $row->notification_id ) . '<br><strong>' . esc_html( Click2EU_Notification_Templates::event_title( $row->event_type ) ) . '</strong></td><td>' . esc_html( $row->source_type . ' #' . $row->source_id ) . '</td><td>' . esc_html( $row->user_id ?: '—' ) . '</td><td>' . esc_html( ucfirst( $row->status ) ) . '</td><td>' . esc_html( self::admin_date( $row->event_due_at ) ) . '<br><small>' . esc_html__( 'Next:', 'click2eu-membership' ) . ' ' . esc_html( self::admin_date( $row->scheduled_at ) ) . '</small></td><td>' . esc_html( $row->attempt_count . '/' . self::MAX_ATTEMPTS ) . '</td><td>' . esc_html( self::admin_date( $row->last_attempt_at ) ) . '</td><td>' . esc_html( self::admin_date( $row->sent_at ) ) . '</td><td>' . esc_html( $row->last_error );
+			if ( ! empty( $row->review_note ) ) { echo '<br><strong>' . esc_html__( 'Review:', 'click2eu-membership' ) . '</strong> ' . esc_html( $row->review_note ); }
 			if ( 'failed' === $row->status ) {
 				$url = wp_nonce_url( admin_url( 'admin-post.php?action=click2eu_retry_notification&notification_id=' . absint( $row->notification_id ) ), 'click2eu_retry_notification_' . absint( $row->notification_id ) );
 				echo '<br><a class="button button-small" href="' . esc_url( $url ) . '">' . esc_html__( 'Retry', 'click2eu-membership' ) . '</a>';

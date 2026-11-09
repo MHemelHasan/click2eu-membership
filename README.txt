@@ -1,5 +1,18 @@
-Click2EU Membership (v0.7.1)
+Click2EU Membership (v0.7.2)
 =======================================
+
+v0.7.2 NOTIFICATION RELIABILITY HARDENING:
+- Separates immutable notification event due time from mutable retry execution
+  time, so 7/3/1-day expiry reminders remain valid after transport retries.
+- Safely derives original reminder due times for existing v0.7.1 queue rows while
+  preserving accepted status, attempt history and transport timestamps.
+- Expiry retry validation checks deterministic identity, original due time,
+  current UTC time, membership state, effective expiry and Scheduled renewal.
+- Recovers an expired third-attempt processing lease into an Uncertain state. The
+  Candidate message is not automatically resent because transport acceptance is
+  unknown; a deduplicated administrator alert is generated instead.
+- Uncertain rows remain visible in diagnostics and are excluded from automatic
+  retention cleanup until an administrator reviews the outcome.
 
 v0.7.1 MEMBERSHIP NOTIFICATIONS:
 - Adds a persistent, UTC notification ledger with deterministic event keys.

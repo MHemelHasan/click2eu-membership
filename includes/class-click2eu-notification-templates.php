@@ -23,6 +23,7 @@ final class Click2EU_Notification_Templates {
 			'upgrade_review_required'      => __( 'Membership upgrade requires review', 'click2eu-membership' ),
 			'invalid_payment_lineage'      => __( 'Invalid membership payment lineage', 'click2eu-membership' ),
 			'notification_delivery_failure'=> __( 'Membership notification delivery failed', 'click2eu-membership' ),
+			'notification_delivery_uncertain'=> __( 'Membership notification delivery outcome uncertain', 'click2eu-membership' ),
 		);
 		return $titles[ sanitize_key( $event_type ) ] ?? __( 'Membership notification', 'click2eu-membership' );
 	}
@@ -44,6 +45,7 @@ final class Click2EU_Notification_Templates {
 			'upgrade_review_required'       => __( 'A membership upgrade could not be finalized safely and requires administrator review.', 'click2eu-membership' ),
 			'invalid_payment_lineage'       => __( 'A membership upgrade chain contains an invalidated payment lineage and requires administrator review.', 'click2eu-membership' ),
 			'notification_delivery_failure' => __( 'A membership notification reached its maximum transport attempts without being accepted.', 'click2eu-membership' ),
+			'notification_delivery_uncertain' => __( 'A final notification attempt lost its worker lease before the transport outcome was recorded. It was not resent automatically and requires administrator review.', 'click2eu-membership' ),
 		);
 		return $messages[ sanitize_key( $event_type ) ] ?? __( 'There is an update to a Click2EU membership.', 'click2eu-membership' );
 	}
@@ -76,7 +78,7 @@ final class Click2EU_Notification_Templates {
 			if ( ! empty( $membership->expires_at ) ) { $rows .= self::row( __( 'Expires', 'click2eu-membership' ), self::date( $membership->expires_at ) ); }
 		}
 		$buttons = '<a href="' . esc_url( $context['member_url'] ) . '" style="display:inline-block;background:#2f6bff;color:#fff;text-decoration:none;padding:11px 18px;border-radius:5px;margin:4px 8px 4px 0">' . esc_html( $context['is_admin'] ? __( 'Membership administration', 'click2eu-membership' ) : __( 'My Membership', 'click2eu-membership' ) ) . '</a>';
-		if ( $context['order_url'] && ! in_array( $notification->event_type, array( 'activation_conflict', 'upgrade_review_required', 'invalid_payment_lineage', 'notification_delivery_failure' ), true ) ) {
+		if ( $context['order_url'] && ! in_array( $notification->event_type, array( 'activation_conflict', 'upgrade_review_required', 'invalid_payment_lineage', 'notification_delivery_failure', 'notification_delivery_uncertain' ), true ) ) {
 			$buttons .= '<a href="' . esc_url( $context['order_url'] ) . '" style="display:inline-block;border:1px solid #2f6bff;color:#12306b;text-decoration:none;padding:10px 17px;border-radius:5px;margin:4px 0">' . esc_html__( 'Order details', 'click2eu-membership' ) . '</a>';
 		}
 		return '<!doctype html><html><body style="margin:0;background:#f5f8fd;color:#1f2937;font-family:Arial,sans-serif"><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center" style="padding:24px 12px"><table role="presentation" width="600" style="max-width:600px;background:#fff;border-collapse:collapse"><tr><td style="background:#12306b;color:#fff;padding:20px 24px;font-size:24px;font-weight:bold">Click2EU</td></tr><tr><td style="padding:28px 24px"><h1 style="color:#12306b;font-size:24px;margin:0 0 16px">' . esc_html( $context['title'] ) . '</h1><p style="line-height:1.6">' . esc_html( $context['message'] ) . '</p>' . ( $rows ? '<table role="presentation" width="100%" style="border-collapse:collapse;margin:20px 0">' . $rows . '</table>' : '' ) . '<p>' . $buttons . '</p><p style="font-size:13px;color:#64748b">' . sprintf( esc_html__( 'Need help? Visit %s.', 'click2eu-membership' ), '<a href="' . esc_url( $context['support_url'] ) . '">' . esc_html__( 'Click2EU Support', 'click2eu-membership' ) . '</a>' ) . '</p></td></tr></table></td></tr></table></body></html>';
