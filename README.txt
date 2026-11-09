@@ -1,5 +1,23 @@
-Click2EU Membership (v0.6.0)
+Click2EU Membership (v0.7.1)
 =======================================
+
+v0.7.1 MEMBERSHIP NOTIFICATIONS:
+- Adds a persistent, UTC notification ledger with deterministic event keys.
+- Candidate events cover Pending payment, activation, scheduled/started renewal,
+  completed upgrade, 7/3/1-day expiry warnings, expiration, suspension and
+  cancellation.
+- Administrator alerts cover activation conflicts, upgrade review, invalid
+  payment lineage and terminal notification transport failure.
+- Action Scheduler is preferred; WP-Cron is the fallback. A bounded five-minute
+  runner recovers expired processing leases without scanning frontend requests.
+- Delivery is attempted with wp_mail() and remains compatible with separately
+  configured SMTP plugins. "Accepted" means only that the WordPress transport
+  accepted the message; it does not confirm inbox delivery.
+- Failed transport attempts retry after 5 minutes, 30 minutes and 2 hours, with
+  three total attempts. Stable unique keys suppress duplicate lifecycle emails.
+- Lightweight responsive HTML and plain-text rendering use the Click2EU visual
+  identity without external fonts or stored message bodies.
+- Existing membership rows are not backfilled automatically during upgrade.
 
 v0.6.0 EARLY RENEWAL AND ADMIN MANAGEMENT:
 - Active dated memberships may renew only the same package and job category.

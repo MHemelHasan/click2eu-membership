@@ -196,6 +196,7 @@ final class Click2EU_Expiration {
 			);
 			if ( 1 === $updated ) {
 				self::unschedule( $membership_id );
+				do_action( 'click2eu_membership_transition', absint( $membership_id ), 'active', 'expired', 'expiration' );
 				self::start_due_locked( $membership->candidate_user_id );
 				return true;
 			}
@@ -242,7 +243,7 @@ final class Click2EU_Expiration {
 			)
 		);
 		if ( $due_active_ids ) {
-			$wpdb->query(
+			$expired = $wpdb->query(
 				$wpdb->prepare(
 					'UPDATE ' . Click2EU_Memberships::table_name() . " SET status = 'expired', expired_at = %s, updated_at = %s WHERE candidate_user_id = %d AND status = 'active' AND expires_at IS NOT NULL AND expires_at <= %s",
 					Click2EU_Time::mysql(), Click2EU_Time::mysql(), absint( $user_id ), Click2EU_Time::mysql()
@@ -250,6 +251,7 @@ final class Click2EU_Expiration {
 			);
 			foreach ( $due_active_ids as $due_id ) {
 				self::unschedule( $due_id );
+				if ( $expired ) { do_action( 'click2eu_membership_transition', absint( $due_id ), 'active', 'expired', 'renewal_handoff' ); }
 			}
 		}
 		$effective_active = $wpdb->get_var(
@@ -275,6 +277,7 @@ final class Click2EU_Expiration {
 		if ( 1 === $updated ) {
 			self::unschedule_start( $membership->membership_id );
 			self::schedule( $membership->membership_id, $membership->expires_at );
+			do_action( 'click2eu_membership_transition', absint( $membership->membership_id ), 'scheduled', 'active', 'renewal_handoff' );
 			return true;
 		}
 		return false;

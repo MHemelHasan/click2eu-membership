@@ -385,6 +385,7 @@ final class Click2EU_Upgrades {
 				$order->update_meta_data( self::REVIEW_META, Click2EU_Time::mysql() );
 				$order->add_order_note( sprintf( __( 'Click2EU payment-lineage reversal from membership #%1$d invalidated this upgrade chain. Previous memberships were not restored. Event: %2$s', 'click2eu-membership' ), absint( $root_id ), $fingerprint ) );
 				$order->save();
+				do_action( 'click2eu_membership_admin_event', 'invalid_payment_lineage', $order->get_id(), $membership->membership_id, $fingerprint );
 			}
 		}
 		if ( ! in_array( $membership->status, array( 'active', 'pending', 'scheduled' ), true ) ) { return; }
@@ -392,9 +393,10 @@ final class Click2EU_Upgrades {
 		if ( 1 !== (int) $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s, 10)', $lock_name ) ) ) { return; }
 		try {
 			$new_status = 'active' === $membership->status ? 'suspended' : 'cancelled';
-			$wpdb->query( $wpdb->prepare( 'UPDATE ' . Click2EU_Memberships::table_name() . " SET status=%s, updated_at=%s WHERE membership_id=%d AND status IN ('active','pending','scheduled')", $new_status, Click2EU_Time::mysql(), $membership->membership_id ) );
+			$updated = $wpdb->query( $wpdb->prepare( 'UPDATE ' . Click2EU_Memberships::table_name() . " SET status=%s, updated_at=%s WHERE membership_id=%d AND status IN ('active','pending','scheduled')", $new_status, Click2EU_Time::mysql(), $membership->membership_id ) );
 			Click2EU_Expiration::unschedule( $membership->membership_id );
 			Click2EU_Expiration::unschedule_start( $membership->membership_id );
+			if ( 1 === $updated ) { do_action( 'click2eu_membership_transition', absint( $membership->membership_id ), $membership->status, $new_status, 'payment_lineage_reversal' ); }
 		} finally {
 			$wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $lock_name ) );
 		}
@@ -408,6 +410,7 @@ final class Click2EU_Upgrades {
 		$order->update_meta_data( self::REVIEW_META, Click2EU_Time::mysql() );
 		$order->add_order_note( $message );
 		$order->save();
+		do_action( 'click2eu_membership_admin_event', 'invalid_payment_lineage', $order->get_id(), 0, $fingerprint );
 	}
 
 	public static function activate( $membership, $order, &$conflict_id = 0 ) {
@@ -477,7 +480,12 @@ final class Click2EU_Upgrades {
 		if ( ! $already_finalized ) { $order->add_order_note( __( 'Click2EU mid-term upgrade activated; source membership retained as Upgraded history.', 'click2eu-membership' ) ); }
 		$order->save();
 		$order = wc_get_order( $order->get_id() );
-		return (int) $order->get_meta( '_click2eu_membership_activated', true ) === (int) $membership->membership_id && (bool) $order->get_meta( self::FINALIZED_META, true );
+		$finalized = (int) $order->get_meta( '_click2eu_membership_activated', true ) === (int) $membership->membership_id && (bool) $order->get_meta( self::FINALIZED_META, true );
+		if ( $finalized && ! $already_finalized ) {
+			do_action( 'click2eu_membership_transition', absint( $source->membership_id ), 'active', 'upgraded', 'upgrade_finalized' );
+			do_action( 'click2eu_membership_transition', absint( $membership->membership_id ), 'pending', 'active', 'upgrade_finalized' );
+		}
+		return $finalized;
 	}
 
 	public static function reconcile_incomplete() {
@@ -495,6 +503,7 @@ final class Click2EU_Upgrades {
 				$order->update_meta_data( self::REVIEW_META, Click2EU_Time::mysql() );
 				$order->add_order_note( __( 'Zero-total upgrade lacked explicit administrator approval and was suspended for review.', 'click2eu-membership' ) );
 				$order->save();
+				do_action( 'click2eu_membership_admin_event', 'upgrade_review_required', $order->get_id(), $membership->membership_id, 'zero-total-unapproved' );
 				Click2EU_Memberships::suspend_order( $order->get_id() );
 			} elseif ( $order && 'completed' === $order->get_status() && ( ! $order->get_meta( self::FINALIZED_META, true ) || (int) $order->get_meta( '_click2eu_membership_activated', true ) !== (int) $membership->membership_id ) ) {
 				$conflict = 0;
