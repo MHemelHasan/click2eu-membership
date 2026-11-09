@@ -111,12 +111,13 @@ final class Click2EU_Dashboard {
 
 		$order       = $this->owned_order( $membership, $user_id );
 		$status      = sanitize_key( $membership->status );
-		$status_copy = $this->status_message( $status );
+		$conflict    = $order && 'pending' === $status && Click2EU_Orders::has_activation_conflict( $order );
+		$status_copy = $this->status_message( $status, $conflict );
 
 		$html .= '<article class="c2eu-dashboard__card">';
 		$html .= '<div class="c2eu-dashboard__card-heading"><div><p class="c2eu-dashboard__message">' . esc_html( $status_copy ) . '</p>';
 		$html .= '<h4>' . esc_html( $this->package_name( $membership ) ) . '</h4></div>';
-		$html .= $this->status_badge( $status ) . '</div>';
+		$html .= $this->status_badge( $status, $conflict ) . '</div>';
 		$html .= '<dl class="c2eu-dashboard__details">';
 		$html .= $this->detail_row( __( 'Job Category', 'click2eu-membership' ), $membership->category_label );
 		$html .= $this->detail_row( __( 'Order', 'click2eu-membership' ), $order ? '#' . $order->get_order_number() : __( 'Order unavailable', 'click2eu-membership' ) );
@@ -127,8 +128,10 @@ final class Click2EU_Dashboard {
 		if ( $order ) {
 			$html .= '<a class="c2eu-dashboard__button" href="' . esc_url( $order->get_view_order_url() ) . '">' . esc_html__( 'View Order', 'click2eu-membership' ) . '</a>';
 		}
-		if ( 'pending' === $status ) {
+		if ( 'pending' === $status && ! $conflict ) {
 			$html .= '<a class="c2eu-dashboard__link" href="' . esc_url( Click2EU_Auth::my_orders_url() ) . '">' . esc_html__( 'View My Orders', 'click2eu-membership' ) . '</a>';
+		} elseif ( $conflict ) {
+			$html .= '<span class="c2eu-dashboard__support">' . esc_html__( 'Payment is complete. Please contact customer support while an administrator reviews activation.', 'click2eu-membership' ) . '</span>';
 		} elseif ( 'suspended' === $status && ! $order ) {
 			$html .= '<span class="c2eu-dashboard__support">' . esc_html__( 'Please contact customer support for assistance.', 'click2eu-membership' ) . '</span>';
 		}
@@ -158,10 +161,11 @@ final class Click2EU_Dashboard {
 				continue;
 			}
 			$order = $this->owned_order( $membership, $user_id );
+			$conflict = $order && 'pending' === sanitize_key( $membership->status ) && Click2EU_Orders::has_activation_conflict( $order );
 			$html .= '<tr><td data-label="' . esc_attr__( 'Package', 'click2eu-membership' ) . '">' . esc_html( $this->package_name( $membership ) ) . '</td>';
 			$html .= '<td data-label="' . esc_attr__( 'Job Category', 'click2eu-membership' ) . '">' . esc_html( $membership->category_label ) . '</td>';
 			$html .= '<td data-label="' . esc_attr__( 'Order', 'click2eu-membership' ) . '">' . esc_html( $order ? '#' . $order->get_order_number() : __( 'Unavailable', 'click2eu-membership' ) ) . '</td>';
-			$html .= '<td data-label="' . esc_attr__( 'Status', 'click2eu-membership' ) . '">' . $this->status_badge( sanitize_key( $membership->status ) ) . '</td>';
+			$html .= '<td data-label="' . esc_attr__( 'Status', 'click2eu-membership' ) . '">' . $this->status_badge( sanitize_key( $membership->status ), $conflict ) . '</td>';
 			$html .= '<td data-label="' . esc_attr__( 'Activated', 'click2eu-membership' ) . '">' . esc_html( $this->activation_date( $membership ) ) . '</td>';
 			$html .= '<td data-label="' . esc_attr__( 'Action', 'click2eu-membership' ) . '">';
 			if ( $order ) {
@@ -216,7 +220,10 @@ final class Click2EU_Dashboard {
 		return get_date_from_gmt( $membership->activated_at, get_option( 'date_format' ) );
 	}
 
-	private function status_message( $status ) {
+	private function status_message( $status, $conflict = false ) {
+		if ( $conflict ) {
+			return __( 'Payment is complete. Membership activation requires administrator review.', 'click2eu-membership' );
+		}
 		$messages = array(
 			'pending'   => __( 'Awaiting payment verification.', 'click2eu-membership' ),
 			'active'    => __( 'Your membership is active.', 'click2eu-membership' ),
@@ -227,7 +234,10 @@ final class Click2EU_Dashboard {
 		return isset( $messages[ $status ] ) ? $messages[ $status ] : __( 'Membership status is unavailable.', 'click2eu-membership' );
 	}
 
-	private function status_badge( $status ) {
+	private function status_badge( $status, $conflict = false ) {
+		if ( $conflict ) {
+			return '<span class="c2eu-dashboard__badge c2eu-dashboard__badge--review">' . esc_html__( 'Review required', 'click2eu-membership' ) . '</span>';
+		}
 		$labels = array(
 			'pending'   => __( 'Pending', 'click2eu-membership' ),
 			'active'    => __( 'Active', 'click2eu-membership' ),

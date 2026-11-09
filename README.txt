@@ -1,5 +1,16 @@
-Click2EU Membership (v0.4.0)
+Click2EU Membership (v0.4.1)
 =======================================
+
+v0.4.1 STABILITY PATCH:
+- Current membership selection is Active first, otherwise the newest Pending,
+  otherwise the newest historical record regardless of terminal status.
+- Completing a second membership order no longer suspends or replaces a
+  different Active membership.
+- Conflicting completed orders remain Pending for administrator review and
+  receive internal conflict metadata plus an order note.
+- Candidate views label such orders "Review required" instead of incorrectly
+  saying that payment is still awaiting verification.
+- No renewal, upgrade, expiry or new ledger status is introduced.
 
 v0.4.0 MEMBERSHIP DASHBOARD:
 - Adds the WooCommerce My Account endpoint /my-account/my-membership/.

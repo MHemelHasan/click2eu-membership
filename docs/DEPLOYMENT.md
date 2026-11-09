@@ -1,4 +1,31 @@
-# Click2EU Membership 0.4.0
+# Click2EU Membership 0.4.1
+
+## 0.4.1 state-consistency patch
+
+- Current-record selection now applies this exact policy: Active first; if no
+  Active exists, newest Pending; otherwise newest ledger record.
+- Activation still uses the per-Candidate MySQL advisory lock, but now checks
+  for a different Active record inside that lock.
+- A conflicting membership remains Pending and the existing Active record is
+  unchanged. The completed order receives
+  `_click2eu_membership_activation_conflict`,
+  `_click2eu_membership_activation_conflict_at`, and an administrator note.
+- Reprocessing an already marked conflict does not add another note or falsely
+  mark the order activated.
+- Candidate status/dashboard output identifies the completed Pending record as
+  requiring administrator review rather than awaiting payment.
+- No database schema or status was added. Renewal and upgrade decisions remain
+  outside this release.
+
+### Conflict review procedure
+
+1. Verify that the order is paid and inspect the Candidate's existing Active
+   membership and the conflicting Pending ledger record.
+2. Do not delete either ledger record or manually copy activation metadata.
+3. Resolve the commercial decision through a future approved upgrade/renewal
+   workflow. Version 0.4.1 intentionally performs no automatic replacement.
+4. If an administrator later uses a supported manual resolution, document the
+   decision and retain the order note for audit history.
 
 ## 0.4.0 dashboard update
 

@@ -5,6 +5,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class Click2EU_Orders {
+	const ACTIVATION_CONFLICT_META    = '_click2eu_membership_activation_conflict';
+	const ACTIVATION_CONFLICT_AT_META = '_click2eu_membership_activation_conflict_at';
+
 	public function __construct() {
 		add_filter( 'woocommerce_add_to_cart_validation', array( $this, 'validate_add_to_cart' ), 10, 6 );
 		add_action( 'woocommerce_check_cart_items', array( $this, 'validate_cart' ) );
@@ -122,7 +125,7 @@ final class Click2EU_Orders {
 			$order->save();
 			return;
 		}
-		if ( 'completed' !== $to || $order->get_meta( '_click2eu_membership_activated', true ) || $order->get_meta( '_click2eu_membership_suspended', true ) ) {
+		if ( 'completed' !== $to || $order->get_meta( '_click2eu_membership_activated', true ) || $order->get_meta( '_click2eu_membership_suspended', true ) || self::has_activation_conflict( $order ) ) {
 			return;
 		}
 		$user = $order->get_user();
@@ -134,10 +137,21 @@ final class Click2EU_Orders {
 		if ( ! $membership || ! Click2EU_Config::is_membership_product( $membership->product_id ) || ! term_exists( absint( $membership->category_term_id ), 'job_listing_category' ) ) {
 			return;
 		}
-		if ( Click2EU_Memberships::activate_membership( $membership->membership_id ) ) {
+		$conflicting_membership_id = 0;
+		if ( Click2EU_Memberships::activate_membership( $membership->membership_id, $conflicting_membership_id ) ) {
 			$order->update_meta_data( '_click2eu_membership_activated', absint( $membership->membership_id ) );
 			$order->add_order_note( __( 'Click2EU Candidate membership activated.', 'click2eu-membership' ) );
 			$order->save();
+		} elseif ( $conflicting_membership_id ) {
+			$order->update_meta_data( self::ACTIVATION_CONFLICT_META, $conflicting_membership_id );
+			$order->update_meta_data( self::ACTIVATION_CONFLICT_AT_META, current_time( 'mysql', true ) );
+			$order->add_order_note( __( 'Click2EU membership activation blocked: this Candidate already has a different active membership. Manual administrator review is required.', 'click2eu-membership' ) );
+			$order->save();
 		}
+	}
+
+	public static function has_activation_conflict( $order ) {
+		$order = $order instanceof WC_Order ? $order : wc_get_order( $order );
+		return $order && absint( $order->get_meta( self::ACTIVATION_CONFLICT_META, true ) ) > 0;
 	}
 }
