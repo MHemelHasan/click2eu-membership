@@ -46,23 +46,56 @@ final class Click2EU_Access {
 	}
 
 	public function guard_actions() {
-		if ( empty( $_POST ) || ! is_user_logged_in() || ! Click2EU_Auth::is_candidate() || Click2EU_Memberships::has_active_membership( get_current_user_id() ) ) {
-			return;
+		if ( empty( $_POST ) ) { return; }
+		$is_resume = isset( $_POST['submit_resume'] );
+		$is_application = isset( $_POST['cariera_addons_resumes_apply_with_resume'] ) || isset( $_POST['cariera_addons_send_application'] );
+		if ( ! $is_resume && ! $is_application ) { return; }
+		if ( current_user_can( 'manage_options' ) || Click2EU_Auth::is_employer() ) { return; }
+		if ( ! is_user_logged_in() || ! Click2EU_Auth::is_candidate() ) {
+			wp_die( esc_html__( 'Sign in with an active Candidate membership to continue.', 'click2eu-membership' ), esc_html__( 'Candidate membership required', 'click2eu-membership' ), array( 'response' => 403 ) );
 		}
-		$restricted = isset( $_POST['submit_resume'] ) || isset( $_POST['cariera_addons_resumes_apply_with_resume'] );
-		if ( ! $restricted ) {
-			return;
+		if ( $is_application ) {
+			$result = Click2EU_Category_Access::authorize_application(
+				get_current_user_id(),
+				absint( wp_unslash( $_POST['job_id'] ?? 0 ) ),
+				absint( wp_unslash( $_POST['resume_id'] ?? 0 ) )
+			);
+		} else {
+			$resume_id = absint( wp_unslash( $_REQUEST['resume_id'] ?? 0 ) );
+			if ( $resume_id ) {
+				$resume = get_post( $resume_id );
+				if ( ! $resume || (int) $resume->post_author !== get_current_user_id() ) {
+					$result = new WP_Error( 'click2eu_resume_ownership', __( 'You cannot modify this resume.', 'click2eu-membership' ) );
+				} else {
+					$result = Click2EU_Category_Access::authorize_resume_terms( get_current_user_id(), wp_unslash( $_POST['resume_category'] ?? array() ) );
+				}
+			} else {
+				$result = Click2EU_Category_Access::authorize_resume_terms( get_current_user_id(), wp_unslash( $_POST['resume_category'] ?? array() ) );
+			}
 		}
-		wp_die( esc_html__( 'An active Candidate membership is required for this action.', 'click2eu-membership' ), esc_html__( 'Membership required', 'click2eu-membership' ), array( 'response' => 403 ) );
+		if ( is_wp_error( $result ) ) {
+			wp_die( esc_html( $result->get_error_message() ), esc_html__( 'Membership category restriction', 'click2eu-membership' ), array( 'response' => 403 ) );
+		}
 	}
 
 	public function guard_rest( $result, $server, $request ) {
-		if ( ! is_user_logged_in() || ! Click2EU_Auth::is_candidate() || Click2EU_Memberships::has_active_membership( get_current_user_id() ) ) {
-			return $result;
+		if ( is_wp_error( $result ) || ! in_array( $request->get_method(), array( 'POST', 'PUT', 'PATCH', 'DELETE' ), true ) ) { return $result; }
+		if ( ! preg_match( '#^/wp/v2/resumes(?:/(\d+))?/?$#', $request->get_route(), $matches ) ) { return $result; }
+		if ( current_user_can( 'manage_options' ) || Click2EU_Auth::is_employer() ) { return $result; }
+		if ( ! is_user_logged_in() || ! Click2EU_Auth::is_candidate() ) {
+			return new WP_Error( 'click2eu_candidate_required', __( 'An active Candidate membership is required.', 'click2eu-membership' ), array( 'status' => 403 ) );
 		}
-		if ( in_array( $request->get_method(), array( 'POST', 'PUT', 'PATCH', 'DELETE' ), true ) && preg_match( '#/(?:resume|application)s?(?:/|$)#i', $request->get_route() ) ) {
-			return new WP_Error( 'click2eu_membership_required', __( 'An active Candidate membership is required.', 'click2eu-membership' ), array( 'status' => 403 ) );
+		$resume_id = absint( $matches[1] ?? $request->get_param( 'id' ) );
+		if ( $resume_id ) {
+			$resume = get_post( $resume_id );
+			if ( ! $resume || (int) $resume->post_author !== get_current_user_id() ) {
+				return new WP_Error( 'click2eu_resume_ownership', __( 'You cannot modify this resume.', 'click2eu-membership' ), array( 'status' => 403 ) );
+			}
 		}
-		return $result;
+		$term_ids = $request->get_param( 'resume_category' );
+		if ( null === $term_ids ) { $term_ids = $request->get_param( 'resume-categories' ); }
+		if ( null === $term_ids && $resume_id ) { $term_ids = wp_get_object_terms( $resume_id, Click2EU_Category_Access::RESUME_TAXONOMY, array( 'fields' => 'ids' ) ); }
+		$authorized = Click2EU_Category_Access::authorize_resume_terms( get_current_user_id(), (array) $term_ids );
+		return is_wp_error( $authorized ) ? $authorized : $result;
 	}
 }

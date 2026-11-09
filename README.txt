@@ -228,3 +228,29 @@ validity and current unused-time credit are revalidated. If the frozen credit is
 more favorable by over one currency cent (configurable through
 `click2eu_upgrade_approval_credit_tolerance`), activation is blocked for review.
 No extra charge or automatic refund is created.
+
+Click2EU Membership 0.7.0
+=========================
+
+Version 0.7.0 adds server-side Candidate category entitlements without changing
+the payment ledger. The purchased `category_term_id` in the effective Active
+membership is the sole job-category authorization key. Labels, submitted IDs,
+profile metadata, URLs and JavaScript are never trusted.
+
+Public job browsing remains open. Protected applications require an authenticated
+Candidate, an expiration-aware Active membership and at least one exact
+`job_listing_category` term match. Category-less jobs are denied for applications;
+parent/child terms do not imply access. Employers and administrators retain their
+existing workflows.
+
+Cariera resumes use the separate `resume_category` taxonomy. Configure an explicit
+job-to-resume mapping in the `click2eu_resume_category_map` option or the filter of
+the same name, for example `array( 100 => array( 250 ) )`. IDs and names are never
+assumed interchangeable. Missing taxonomy, terms or mappings fail closed only for
+protected resume actions.
+
+Verified adapters cover Cariera's `application_form_validate_fields` and
+`submit_resume_form_validate_fields`, direct application/resume POST names, WP Job
+Manager's per-job apply visibility filter, and standard `/wp/v2/resumes` writes.
+Unrelated REST routes and public REST reads are unchanged. Cariera Addons is
+inactive locally, so live application/resume E2E remains blocked.
