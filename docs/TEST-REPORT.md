@@ -515,3 +515,28 @@ deduplicated administrator escalation.
 and a destructive operating-system process kill during the post-transport update
 window. The equivalent expired-lease database states were executed deterministically.
 Cariera browser E2E remains BLOCKED pending legitimate activation.
+
+## 0.8.0-A independent browser and integration QA / 0.7.3 fix
+
+Real Chrome browser automation exercised the local Join Us page, Classic Checkout,
+WooCommerce HPOS order administration, Candidate My Account membership UI, all
+four manual approvals, three upgrade paths, renewal, public job browsing and both
+Click2EU administrator screens. Outgoing mail was intercepted and all users,
+orders, terms, ledger rows, notification rows and scheduled fixture actions were
+removed after testing.
+
+One HIGH defect was confirmed: `wp_kses_post()` removed renewal and upgrade forms
+from `Click2EU_Dashboard::account_content()`. Version 0.7.3 uses a narrow additional
+allowlist and retains sanitization. Real-browser regression completed Basic to Pro,
+Basic to Premium and Pro to Elite upgrades with correct credits and approval state.
+
+The valid integration run completed **62 PASS, 0 product FAIL**. Two assertions in
+the first retry harness used an upgrade-target membership for a generic activation
+event; validation correctly rejected that impossible source. Those harness results
+were discarded, the fixture was corrected to an original Active membership, and
+all three retry assertions passed. Action Scheduler executed with no due work, and
+an isolated WP-Cron fallback check scheduled the five-minute runner and daily
+cleanup at their exact delays.
+
+See `BROWSER-E2E-REPORT.md`, `INTEGRATION-MATRIX.md` and `QA-BLOCKERS.md` for the
+evidence classification and remaining limitations.
