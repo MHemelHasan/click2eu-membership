@@ -20,6 +20,11 @@ final class Click2EU_Access {
 
 		if ( is_page( Click2EU_Config::join_page_id() ) ) {
 			if ( 'active' === $status && Click2EU_Config::candidate_dashboard_id() ) {
+				$renewal_id = isset( $_GET['renew_membership'] ) ? absint( wp_unslash( $_GET['renew_membership'] ) ) : 0;
+				$active     = $renewal_id ? Click2EU_Memberships::get_membership( $renewal_id ) : null;
+				if ( $active && (int) $active->candidate_user_id === $user_id && 'active' === $active->status && ! empty( $active->expires_at ) && ! Click2EU_Memberships::has_pending_membership( $user_id ) && ! Click2EU_Memberships::has_scheduled_membership( $user_id ) ) {
+					return;
+				}
 				wp_safe_redirect( get_permalink( Click2EU_Config::candidate_dashboard_id() ) );
 				exit;
 			}

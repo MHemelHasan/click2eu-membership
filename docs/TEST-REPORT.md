@@ -1,6 +1,45 @@
-# Click2EU Membership 0.5.0 Test Report
+# Click2EU Membership 0.6.0 Test Report
 
-Expiration test date: 2026-11-09 (Asia/Dhaka)
+Renewal test date: 2026-11-09 (Asia/Dhaka)
+
+## 0.6.0 executed renewal/admin regression
+
+Tests used an injected UTC clock, temporary `example.invalid` Candidates,
+isolated ledger records and local HPOS WooCommerce CRUD orders/items. No imported
+record, production system, payment service or real recipient was used. Fixtures
+and scheduled actions were removed after execution.
+
+| Scenario | Result |
+|---|---|
+| Schema-v3 renewal fields and version | PASS |
+| Active Candidate creates same-plan/category Pending renewal | PASS |
+| Pending renewal preserves current access and remaining days | PASS |
+| Early approval schedules start at existing expiry | PASS |
+| Scheduled renewal receives full purchased duration | PASS |
+| Early payment does not start new term | PASS |
+| Approval marker does not falsely claim activation | PASS |
+| Duplicate approval is idempotent | PASS |
+| Unique scheduled-start action exists | PASS |
+| Delayed cron causes no entitlement gap | PASS |
+| Old term expires and new term starts at boundary | PASS |
+| Historical rows remain intact | PASS |
+| Refund before start cancels renewal and preserves Active | PASS |
+| Refund after start suspends renewed membership | PASS |
+| Invalid ownership is rejected | PASS |
+| Concurrent renewal approvals cannot overlap | PASS |
+| Different-package upgrade remains blocked | PASS |
+| Legacy Active receives no invented expiry or renewal | PASS |
+| Candidate dashboard exposes renewal lifecycle | PASS |
+| Checkout renewal metadata preserved | PASS |
+| HPOS WooCommerce CRUD | PASS |
+| Admin page requires `manage_options` and registers | PASS |
+| Post-review renewal smoke, schema and admin stylesheet | PASS |
+| PHP syntax, every plugin PHP file | PASS |
+
+Admin page rendering was exercised through registration and capability checks;
+interactive browser filter/navigation testing is **NOT TESTED**. Genuine
+simultaneous multi-process load was not generated, though competing approvals
+were executed through the same locked repository path.
 
 ## 0.5.0 executed expiration regression
 
