@@ -1,5 +1,30 @@
-Click2EU Membership (v0.7.3)
+Click2EU Membership (v0.7.4)
 =======================================
+
+v0.7.4 PHASE-1 ACCESS CONTROL:
+- Adds a centralized actor/route policy covering protected job, company and
+  resume HTML routes, AJAX, REST, search, feeds and sitemaps.
+- Adds WP Admin > Click2EU Memberships > Settings for environment-specific Page
+  Mapping, fixed Phase-1 policy controls and non-sensitive diagnostics.
+- Guests on protected HTML routes are redirected to the mapped Login /
+  Registration page; unpaid/Pending Candidates are redirected to Join Us.
+  Non-HTML requests continue to receive structured 401/403 responses.
+- Active Candidates receive exact purchased-category job access. Employers do
+  not require Candidate membership, but job submission requires a published,
+  owned company profile.
+- Unpaid Candidates retain Dashboard, Profile, My Account, Orders, My
+  Membership and a read-only My Resumes list.
+- Removes the v0.7.3 Pending Join-to-Orders routing, preserves Cart/Checkout and
+  Order Received continuations, and routes Cariera AJAX Candidate login through
+  the membership-aware Join/Dashboard decision without changing vendor code.
+- Join Us remains a clean public pricing page. Legacy `click2eu_auth=1` links and
+  guest Join submissions now use the dedicated authentication route, with a
+  validated WordPress-login fallback when that page is not mapped.
+- Notification diagnostics now provide counts, bounded pagination, status chips
+  and failed-only retry controls without changing queue or schema semantics.
+- The final v0.7.4 code artifact is intended for controlled acceptance on the
+  owner's Cariera-enabled pre-launch site. Client launch approval remains
+  conditional on the documented Candidate, Employer and Cariera browser E2E.
 
 v0.7.3 DASHBOARD FORM PRESERVATION:
 - Preserves the nonce-protected renewal and upgrade forms when rendering the

@@ -442,25 +442,57 @@ final class Click2EU_Notifications {
 		$allowed = array( 'all', 'queued', 'processing', 'accepted', 'failed', 'uncertain', 'cancelled' );
 		$filter = sanitize_key( wp_unslash( $_GET['notification_status'] ?? 'all' ) );
 		$filter = in_array( $filter, $allowed, true ) ? $filter : 'all';
+		$paged = max( 1, absint( $_GET['paged'] ?? 1 ) );
+		$per_page = 25;
+		$table = self::table_name();
 		$where = 'all' === $filter ? '' : $wpdb->prepare( ' WHERE status=%s', $filter );
-		$rows = $wpdb->get_results( 'SELECT * FROM ' . self::table_name() . $where . ' ORDER BY notification_id DESC LIMIT 200' );
-		echo '<div class="wrap"><h1>' . esc_html__( 'Membership Notifications', 'click2eu-membership' ) . '</h1><p>' . esc_html__( 'Transport diagnostics only. Accepted means WordPress handed the message to its configured mail transport; it does not confirm inbox delivery.', 'click2eu-membership' ) . '</p><nav class="c2eu-admin-filters">';
+		$count_rows = $wpdb->get_results( 'SELECT status, COUNT(*) AS total FROM ' . $table . ' GROUP BY status' );
+		$counts = array_fill_keys( array_slice( $allowed, 1 ), 0 );
+		foreach ( $count_rows as $count_row ) {
+			if ( isset( $counts[ $count_row->status ] ) ) { $counts[ $count_row->status ] = absint( $count_row->total ); }
+		}
+		$counts['all'] = array_sum( $counts );
+		$total_items = 'all' === $filter ? $counts['all'] : $counts[ $filter ];
+		$total_pages = max( 1, (int) ceil( $total_items / $per_page ) );
+		$paged = min( $paged, $total_pages );
+		$offset = ( $paged - 1 ) * $per_page;
+		$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM ' . $table . $where . ' ORDER BY notification_id DESC LIMIT %d OFFSET %d', $per_page, $offset ) );
+		echo '<div class="wrap c2eu-admin-memberships c2eu-notifications"><div class="c2eu-admin-header"><h1>' . esc_html__( 'Membership Notifications', 'click2eu-membership' ) . '</h1><p>' . esc_html__( 'Review notification queue health and transport outcomes. Accepted means WordPress handed the message to its configured mail transport; it does not confirm inbox delivery. Uncertain records require manual review and cannot be retried here.', 'click2eu-membership' ) . '</p></div><nav class="c2eu-admin-filters" aria-label="' . esc_attr__( 'Notification status filters', 'click2eu-membership' ) . '">';
 		foreach ( $allowed as $status ) {
 			$url = add_query_arg( array( 'page' => self::PAGE_SLUG, 'notification_status' => $status ), admin_url( 'admin.php' ) );
-			echo '<a class="' . esc_attr( $filter === $status ? 'current' : '' ) . '" href="' . esc_url( $url ) . '">' . esc_html( ucfirst( $status ) ) . '</a> ';
+			echo '<a class="' . esc_attr( $filter === $status ? 'current' : '' ) . '" href="' . esc_url( $url ) . '">' . esc_html( ucfirst( $status ) ) . ' <span class="c2eu-count">' . esc_html( $counts[ $status ] ) . '</span></a> ';
 		}
-		echo '</nav><table class="widefat striped"><thead><tr><th>ID / Event</th><th>Source</th><th>Candidate</th><th>Status</th><th>Event due / Next attempt</th><th>Attempts</th><th>Last attempt</th><th>Accepted</th><th>Error / Review / Action</th></tr></thead><tbody>';
-		if ( ! $rows ) { echo '<tr><td colspan="9">' . esc_html__( 'No notification records found.', 'click2eu-membership' ) . '</td></tr>'; }
+		echo '</nav>';
+		$this->render_admin_pagination( $filter, $paged, $total_pages, $total_items );
+		echo '<div class="c2eu-admin-table-wrap"><table class="widefat striped"><thead><tr><th>ID / Event</th><th>Source</th><th>Candidate</th><th>Status</th><th>Event due</th><th>Next attempt</th><th>Attempts</th><th>Last attempt</th><th>Accepted at</th><th>Error / Review</th><th>Action</th></tr></thead><tbody>';
+		if ( ! $rows ) { echo '<tr><td colspan="11" class="c2eu-empty-state">' . esc_html__( 'No notification records match this status.', 'click2eu-membership' ) . '</td></tr>'; }
 		foreach ( $rows as $row ) {
-			echo '<tr><td>#' . esc_html( $row->notification_id ) . '<br><strong>' . esc_html( Click2EU_Notification_Templates::event_title( $row->event_type ) ) . '</strong></td><td>' . esc_html( $row->source_type . ' #' . $row->source_id ) . '</td><td>' . esc_html( $row->user_id ?: '—' ) . '</td><td>' . esc_html( ucfirst( $row->status ) ) . '</td><td>' . esc_html( self::admin_date( $row->event_due_at ) ) . '<br><small>' . esc_html__( 'Next:', 'click2eu-membership' ) . ' ' . esc_html( self::admin_date( $row->scheduled_at ) ) . '</small></td><td>' . esc_html( $row->attempt_count . '/' . self::MAX_ATTEMPTS ) . '</td><td>' . esc_html( self::admin_date( $row->last_attempt_at ) ) . '</td><td>' . esc_html( self::admin_date( $row->sent_at ) ) . '</td><td>' . esc_html( $row->last_error );
+			$user = $row->user_id ? get_userdata( $row->user_id ) : false;
+			$candidate = $user ? $user->display_name . ' (#' . $row->user_id . ')' : ( $row->user_id ? '#' . $row->user_id : '—' );
+			echo '<tr><td>#' . esc_html( $row->notification_id ) . '<br><strong>' . esc_html( Click2EU_Notification_Templates::event_title( $row->event_type ) ) . '</strong></td><td>' . esc_html( $row->source_type . ' #' . $row->source_id ) . '</td><td>' . esc_html( $candidate ) . '</td><td><span class="c2eu-status c2eu-status--' . esc_attr( $row->status ) . '">' . esc_html( ucfirst( $row->status ) ) . '</span></td><td>' . esc_html( self::admin_date( $row->event_due_at ) ) . '</td><td>' . esc_html( self::admin_date( $row->scheduled_at ) ) . '</td><td>' . esc_html( $row->attempt_count . '/' . self::MAX_ATTEMPTS ) . '</td><td>' . esc_html( self::admin_date( $row->last_attempt_at ) ) . '</td><td>' . esc_html( self::admin_date( $row->sent_at ) ) . '</td><td>' . esc_html( $row->last_error );
 			if ( ! empty( $row->review_note ) ) { echo '<br><strong>' . esc_html__( 'Review:', 'click2eu-membership' ) . '</strong> ' . esc_html( $row->review_note ); }
+			if ( 'uncertain' === $row->status ) { echo '<br><strong>' . esc_html__( 'Manual review required.', 'click2eu-membership' ) . '</strong>'; }
+			echo '</td><td>';
 			if ( 'failed' === $row->status ) {
 				$url = wp_nonce_url( admin_url( 'admin-post.php?action=click2eu_retry_notification&notification_id=' . absint( $row->notification_id ) ), 'click2eu_retry_notification_' . absint( $row->notification_id ) );
-				echo '<br><a class="button button-small" href="' . esc_url( $url ) . '">' . esc_html__( 'Retry', 'click2eu-membership' ) . '</a>';
+				echo '<a class="button button-small" href="' . esc_url( $url ) . '">' . esc_html__( 'Retry', 'click2eu-membership' ) . '</a>';
+			} else {
+				echo '<span aria-hidden="true">—</span>';
 			}
 			echo '</td></tr>';
 		}
 		echo '</tbody></table></div>';
+		$this->render_admin_pagination( $filter, $paged, $total_pages, $total_items );
+		echo '</div>';
+	}
+
+	private function render_admin_pagination( $filter, $paged, $total_pages, $total_items ) {
+		echo '<div class="tablenav"><div class="tablenav-pages"><span class="displaying-num">' . esc_html( sprintf( _n( '%s item', '%s items', $total_items, 'click2eu-membership' ), number_format_i18n( $total_items ) ) ) . '</span>';
+		if ( $total_pages > 1 ) {
+			$base = str_replace( '999999999', '%#%', esc_url( add_query_arg( array( 'page' => self::PAGE_SLUG, 'notification_status' => $filter, 'paged' => 999999999 ), admin_url( 'admin.php' ) ) ) );
+			echo wp_kses_post( paginate_links( array( 'base' => $base, 'format' => '', 'current' => $paged, 'total' => $total_pages, 'type' => 'plain' ) ) );
+		}
+		echo '</div></div>';
 	}
 
 	public function handle_admin_retry() {

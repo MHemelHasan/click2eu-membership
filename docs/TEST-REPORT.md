@@ -1,5 +1,23 @@
 # Click2EU Membership 0.6.0 Test Report
 
+## v0.7.4 final UI/authentication polish (2026-11-10)
+
+| Check | Method | Result |
+|---|---|---|
+| All plugin PHP files | PHP 8.2 lint | PASS |
+| Public Join retains four pricing cards | Real headless Chrome DOM | PASS |
+| Join contains no injected authentication forms | Real headless Chrome DOM | PASS |
+| Legacy `?click2eu_auth=1` | Real headless Chrome redirect | PASS: WordPress fallback because local Login mapping is missing |
+| Guest Join POST | Isolated HTTP session | PASS: auth redirect; no WooCommerce cart cookie |
+| Guest protected Jobs route | Real headless Chrome + response headers | PASS: 302 to auth fallback, no listings rendered |
+| Published mapped auth page wins even in popup mode | Read-only WordPress runtime filter | PASS |
+| Notification wrapper/counts/pagination render | Read-only administrator-context render | PASS |
+| Desktop/mobile warning spacing | CSS source review: 28px / 20px | PASS |
+| Candidate/Employer Cariera login and registration | Real vendor handler | BLOCKED: Cariera Core/Addons inactive locally |
+
+No production site, imported order, payment, notification transport, or real
+recipient was used. Full authenticated Cariera browser E2E remains required.
+
 Renewal test date: 2026-11-09 (Asia/Dhaka)
 
 ## 0.6.0 executed renewal/admin regression

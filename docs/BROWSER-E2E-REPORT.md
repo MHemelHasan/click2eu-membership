@@ -1,5 +1,100 @@
 # v0.8.0-A Independent Browser E2E Report
 
+## v0.7.4 final-build verification (2026-11-10)
+
+The final-build pass repeated PHP 8.2/8.4 lint, WordPress initialization,
+WooCommerce 11.2.2 with HPOS enabled, guest Join rendering in Chromium, legacy
+authentication fallback, protected Jobs redirect headers, structured guest AJAX
+denial, empty-cart Checkout handling and notification-admin rendering. All
+available checks passed. This evidence authorizes the final code artifact for
+controlled QA; it does not replace the still-pending Cariera-enabled scenarios.
+
+## v0.7.4 RC1 final-polish evidence (2026-11-10)
+
+Real Chromium browser checks confirmed that direct guest Join remains public,
+the four cards and category selectors render, the warning-to-heading spacing is
+28px desktop and 20px under 600px, and neither direct Join nor the legacy auth
+query renders inline login/registration forms. The legacy query and an explicit
+guest Join submission reached the safe WordPress login fallback with Join Us as
+the local continuation because this LocalWP database has no published Login /
+Registration mapping. The Join submission created no WooCommerce cart cookie.
+
+A guest request to `/jobs/` returned 302, no-cache headers and
+`X-Redirect-By: Click2EU Membership`, then rendered the login fallback without
+job listings. Read-only runtime injection of a published mapping confirmed that
+the mapped page wins even while Cariera's layout option is `popup`.
+
+Desktop and 500px responsive screenshots are stored outside the plugin in
+`wp-content/releases/v0.7.4-rc1-evidence/`. Actual Cariera Candidate/Employer
+AJAX login, registration, password recovery, resume/application handlers and
+authenticated landing behavior remain BLOCKED because Cariera Core/Addons are
+not legitimately active in LocalWP.
+
+## v0.7.4 redirect and Classic Checkout acceptance addendum (2026-11-10)
+
+Chrome 156 was driven through DevTools Protocol 1.3 using a separate disposable
+profile. Cookies, order keys and nonces were not retained in evidence.
+
+### Redirect diagnosis
+
+Real browser evidence against unchanged `develop` / v0.7.3 reproduced these
+chains for an isolated Pending Candidate:
+
+- Join Us: `302 WordPress -> /my-account/orders/ -> 200`
+- Candidate Dashboard: `302 WordPress -> /join-us/?membership=required`, then
+  `302 WordPress -> /my-account/orders/ -> 200`
+- Homepage, My Profile, My Orders, My Membership and Order Received: direct 200
+
+Therefore v0.7.3 conclusively caused the unwanted Orders landing, but did not
+form an infinite cycle locally. The missing return leg of the reported live
+loop was not reproduced. Authenticated live diagnosis was unavailable; the
+public live site redirected the disposable guest browser to its password-
+protection page before WordPress account routing.
+
+### Feature-branch browser results
+
+| Scenario | Result | Evidence |
+|---|---|---|
+| Pending login destination | PASS | Join Us |
+| Pending Homepage / Join / Dashboard / Profile | PASS | Direct HTTP 200 in Chrome |
+| Pending Orders / My Membership | PASS | Direct HTTP 200 in Chrome |
+| Pending Submit Resume / Job Search | PASS | `302 Click2EU Membership` to Join, then 200 |
+| Cheque Classic Checkout | PASS | Order Received 200; instructions visible; no browser errors |
+| BACS Classic Checkout | PASS | Order Received 200; bank instructions visible; no browser errors |
+| HPOS order/ledger persistence | PASS | One `on-hold` order and one Pending ledger row per Candidate |
+| Admin completion | PASS | BACS order Completed; membership Active with 30-day expiry |
+| Active login and Join | PASS | Candidate Dashboard 200; no loop |
+| Refund regression | PASS | Order Refunded; membership Suspended; paid routes denied |
+| Real Cariera handlers | BLOCKED | Core/Addons inactive under legitimate local license limits |
+
+All isolated users, HPOS orders, ledger rows, notification rows, scheduled
+actions, mail interceptor, browser profile and harness files were removed.
+
+## v0.7.4 Phase-1 access-control addendum (2026-11-10)
+
+This addendum records current feature-branch evidence; the historical v0.8.0-A
+report below remains unchanged.
+
+- Browser control: **BLOCKED**. The Chrome extension exposed the local tabs but
+  its tab create/attach adapter failed with an internal `timeoutMs` error after
+  reset and retry. No HTTP result is presented as a browser result.
+- Local Cariera runtime: **BLOCKED**. Cariera Core 2.0.2 and Addons 1.1.1 are
+  installed but inactive, so vendor UI, console, network and persistence E2E
+  cannot be honestly completed.
+- WordPress integration: **PASS, 35 assertions / 0 failures** using isolated
+  example.invalid users, membership rows, jobs, companies, resume and terms.
+- Real local HTTP: **PASS** for guest/unpaid redirects, allowed account routes,
+  exact-category Active job detail, nonmatching denial, listing AJAX 401/403,
+  application/resume/message POST denial, feed/search non-disclosure, sitemap
+  suppression and private/no-store response headers.
+- A real HTTP defect was found and fixed: singular protected queries were being
+  emptied in `pre_get_posts`, causing 404 before the intended Join/category
+  redirect. Singular main queries now resolve for `template_redirect`; list and
+  archive queries remain server-filtered.
+
+Because real browser and active vendor-handler tests are blocked, v0.7.4 was not
+version-bumped, packaged, merged into `develop`, or declared launch-ready.
+
 ## Scope and environment
 
 - Site: `http://click2eu.local/` (LocalWP only)

@@ -1,4 +1,95 @@
-# Click2EU Membership 0.6.0
+# Click2EU Membership deployment
+
+## v0.7.4 final artifact and conditional launch status
+
+The final 0.7.4 plugin artifact has been authorized for controlled acceptance.
+This is a code-package milestone, not client launch approval. Local PHP,
+WordPress, WooCommerce/HPOS, guest routing, Join rendering and notification-admin
+checks passed; real Cariera Candidate/Employer handlers remain pending on the
+legitimately activated pre-launch environment.
+
+Final-polish deployment requirements:
+
+- Map a distinct, published Cariera Login / Registration page in Click2EU
+  Settings. If missing, the plugin intentionally uses `wp-login.php` with a
+  validated Join Us continuation and shows an administrator diagnostic.
+- Confirm Join Us is public and contains pricing only; the legacy
+  `click2eu_auth=1` query must redirect and must never render inline forms.
+- Purge page/CDN caches after activation so the 28px desktop and 20px mobile
+  notice spacing and notification-admin stylesheet are current.
+- Do not approve client launch until Candidate and Employer login, registration,
+  logout, Active/Dashboard routing, unpaid/Join routing, and Cart/Checkout
+  continuation pass with legitimately activated Cariera handlers.
+
+Owner handoff: retain the known-good v0.7.3 ZIP, upload only the v0.7.4 plugin
+ZIP, replace/activate the membership plugin, verify every Click2EU page mapping
+and live category mapping, clear plugin/page/CDN caches, and execute the launch
+checklist. Do not import the LocalWP database or edit licensed Cariera source.
+
+The feature branch introduces `Click2EU_Settings`, `Click2EU_Route_Policy` and
+server-side adapters in `Click2EU_Access`. It does not add or migrate a database
+table. The only new persisted value is the namespaced
+`click2eu_phase1_settings` WordPress option after an administrator saves the
+Settings page.
+
+Candidate AJAX login forces Cariera's effective Candidate redirect mode to
+`custom_page` at read time and supplies Join Us as the guest-localized landing.
+Pending/unpaid Candidates remain on Join Us; an Active Candidate is then routed
+server-side to Candidate Dashboard. The stored Cariera option is not rewritten.
+Normal WordPress login preserves only same-site Cart/Checkout continuations, so
+checkout authentication and Order Received are not intercepted.
+
+Cart, Checkout, Order Pay, Order Received and My Account endpoints bypass
+membership HTML redirects. Settings rejects Join mappings that collide with My
+Account, Cart, Checkout, Submit Resume, Job Search or Company Listings, and
+runtime self-redirects fail closed.
+
+Do not copy LocalWP page IDs to staging or production. In each environment open
+**WP Admin > Click2EU Memberships > Settings**, map every published page, save,
+then re-open the page and verify every diagnostic URL. Missing mappings fail
+closed for protected actions but can make an intended workflow unavailable.
+
+### Required pre-deployment verification
+
+1. Activate legitimately licensed Cariera Core and Cariera Addons on staging.
+2. Confirm Candidate and Employer roles, job/company/resume post types, job and
+   resume taxonomies, real application handlers and Direct Message handlers.
+3. Configure explicit `click2eu_resume_category_map` term-ID mappings. Job and
+   resume term IDs are not interchangeable.
+4. Verify company submission moderation and approve a fixture company before
+   attempting job submission.
+5. Run every BLOCKED row in `docs/INTEGRATION-MATRIX.md` with real vendor forms
+   and inspect authoritative posts/order/application records.
+6. Confirm Checkout, My Account, payment callbacks, WP-Cron and Action Scheduler
+   are not cached or redirected.
+
+### Page-cache/CDN exclusions
+
+Exclude Join Us, Login/Registration, Candidate and Employer dashboards, My
+Profile, My Resumes, Submit Resume, My Account and all endpoints, Cart,
+Checkout, Job Search, job/company/resume archives and singles, their taxonomy
+archives, `wp-admin/admin-ajax.php`, protected REST routes and all personalized
+membership/category responses. Never serve an Active Candidate's entitled job
+response to another user. Purge CDN, page, object and browser caches after
+deployment and rollback.
+
+### Safe rollback
+
+1. Put staging/live behind maintenance controls before changing access code.
+2. Retain the known-good v0.7.3 ZIP and a database backup before deployment.
+3. If a launch-gate test fails, restore the known-good plugin directory as one
+   atomic replacement; do not merge individual vendor or plugin files.
+4. Reactivate only if needed, purge all caches, and verify Join, Checkout, My
+   Account, cron and payment callbacks.
+5. The optional `click2eu_phase1_settings` option may remain; v0.7.3 ignores it.
+   Do not roll back or replace the production database solely for this release.
+
+See `docs/PHASE1-LAUNCH-CHECKLIST.md` for environment diagnostics and the
+staging acceptance sequence.
+
+# Historical deployment documentation
+
+## Click2EU Membership 0.6.0
 
 ## 0.6.0 early renewal and administration
 
