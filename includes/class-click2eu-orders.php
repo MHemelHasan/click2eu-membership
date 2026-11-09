@@ -162,6 +162,7 @@ final class Click2EU_Orders {
 			$order->update_meta_data( Click2EU_Upgrades::REVIEW_META, Click2EU_Time::mysql() );
 			$order->add_order_note( __( 'Click2EU upgrade activation blocked because its frozen source, payment, ownership, or lifecycle assumptions changed. Manual administrator review is required.', 'click2eu-membership' ) );
 			$order->save();
+			do_action( 'click2eu_membership_admin_event', 'upgrade_review_required', $order->get_id(), $membership->membership_id, '' );
 			return;
 		}
 		if ( Click2EU_Memberships::activate_membership( $membership->membership_id, $conflicting_membership_id, $order, $activation_state ) ) {
@@ -178,6 +179,7 @@ final class Click2EU_Orders {
 			$order->update_meta_data( self::ACTIVATION_CONFLICT_AT_META, Click2EU_Time::mysql() );
 			$order->add_order_note( __( 'Click2EU membership activation blocked: this Candidate already has a different active membership. Manual administrator review is required.', 'click2eu-membership' ) );
 			$order->save();
+			do_action( 'click2eu_membership_admin_event', 'activation_conflict', $order->get_id(), $membership->membership_id, '' );
 		}
 	}
 

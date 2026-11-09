@@ -387,3 +387,87 @@ The local active-plugin list does not include Cariera Addons; consequently
 `resume`, `job_application` and `resume_category` are not registered in the normal
 runtime. Activate only with a legitimate license/configuration, configure mapping,
 then execute the browser/server E2E matrix before production deployment.
+
+## 0.7.1 notification deployment
+
+### Authoritative event map
+
+| Event | Authoritative capture point | Validation before delivery |
+|---|---|---|
+| Payment pending | Successful `Click2EU_Memberships::create_pending()` insert | Ledger row remains Pending and belongs to the Candidate |
+| Membership activated | Successful Pending → Active ledger update | Effective Active membership plus Completed, owned order |
+| Renewal scheduled | Successful Pending → Scheduled renewal update | Scheduled ledger row plus Completed, owned order |
+| Renewal started | Successful Scheduled → Active handoff | Active renewal row plus Completed, owned order |
+| Upgrade completed | Upgrade finalization markers persisted | Target Active, source Upgraded, finalization metadata present |
+| Expiring 7/3/1 days | Reminder creation after a new activation | Active, unexpired row; unchanged expiry; no Scheduled renewal |
+| Expired | Successful Active → Expired update | Row remains Expired and no Active successor renewal exists |
+| Suspended / Cancelled | Successful reversal transition | Ledger row remains in the intended terminal state |
+| Activation conflict | Persisted order conflict marker | Conflict marker still exists |
+| Upgrade review | Persisted upgrade review marker | Review marker still exists |
+| Invalid payment lineage | Persisted lineage fingerprint/review marker | Related order and review marker still exist |
+| Delivery failure | Third rejected transport attempt | Original notification remains Failed |
+
+No event is generated from a page view. WooCommerce status changes are only an
+entry point; success messages are captured after the corresponding ledger or
+upgrade transition succeeds.
+
+### Storage and queue
+
+Schema version `1.0.0` creates `{prefix}click2eu_notifications`. It stores event
+identity, source IDs, queue state, UTC scheduling/attempt timestamps and a short
+safe error summary. It does not store recipients, full message bodies, payment
+credentials or license data. The unique `event_key` index is the lifecycle
+deduplication boundary. Examples include `membership:123:activated`,
+`membership:123:expiry-warning:7d` and `order:456:activation-conflict`.
+
+Action Scheduler receives single delivery actions and a five-minute bounded queue
+runner when available. WP-Cron provides equivalent fallback events. A worker uses
+an atomic status update and five-minute lease before transport. The runner handles
+at most 25 due or abandoned rows per pass. Accepted/Cancelled rows default to 180
+days retention and Failed rows to 365 days; both periods are filterable.
+
+Transport attempts are limited to three. Rejected attempts retry after 5 minutes,
+30 minutes and 2 hours. A terminal failure queues one administrator alert. An
+administrator may retry a Failed row from Click2EU Memberships > Notifications;
+the action requires `manage_options`, a row-scoped nonce, retains the same event
+key and records administrator ID/time. Accepted messages are never automatically
+resent. A process crash after the transport accepts a message but before the row
+is updated can still produce an unavoidable duplicate; exactly-once external
+email delivery cannot be guaranteed.
+
+### Expiry and renewal policy
+
+Warnings are created only for newly activated dated memberships. Legacy Active
+rows without expiry receive none. A Scheduled renewal cancels generic warnings on
+the current term. If that renewal is later cancelled while the parent remains
+Active, eligible future warnings are revived under their original event keys.
+Upgrade, suspension, cancellation and expiration cancel stale queued warnings.
+The warnings never change membership state.
+
+The upgrade migration deliberately does not enqueue historical lifecycle mail.
+Already-Active memberships may be scheduled only through an explicit controlled
+call to `Click2EU_Notifications::schedule_reminders( $membership_id )` after an
+administrator reviews the intended audience. Do not run an unrestricted backfill.
+
+### Templates, SMTP and privacy
+
+Templates use navy `#12306b`, blue `#2f6bff` and background `#f5f8fd`, with safe
+membership/order links and no external fonts. Candidate recipients are resolved
+from the ledger's verified WordPress user ID; administrator recipients use the
+validated site `admin_email`. Posted recipients and user-provided HTML are never
+accepted. `wp_mail()` is the only transport, so production SMTP must be configured
+independently and tested on staging. Transport acceptance does not prove delivery.
+
+For test interception, use WordPress's `pre_wp_mail` filter and example.invalid
+recipients. Never point fixture users at real addresses. Before staging release:
+
+1. Verify the notification table and recurring Action Scheduler actions.
+2. Configure and test the site's sender domain, SPF/DKIM/DMARC and SMTP plugin.
+3. Verify Candidate and administrator addresses and support URL.
+4. Exercise Pending, activation, renewal, upgrade, refund and expiry transitions.
+5. Confirm retry diagnostics without sending to production recipients.
+6. Retain the Cariera/browser E2E blocker until legitimate activation is available.
+
+Rollback may deactivate v0.7.1 without dropping the notification ledger. Scheduled
+notification actions are unscheduled on deactivation; historical rows remain for
+diagnosis and a later safe resume.

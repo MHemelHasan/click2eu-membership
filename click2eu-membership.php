@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Click2EU Membership
  * Description: Candidate membership packages, manual-payment activation, access control and WooCommerce integration for Click2EU.
- * Version: 0.7.0
+ * Version: 0.7.1
  * Requires Plugins: woocommerce
  * Requires PHP: 7.4
  * Author: HemelHasan
@@ -22,6 +22,8 @@ require_once __DIR__ . '/includes/class-click2eu-expiration.php';
 require_once __DIR__ . '/includes/class-click2eu-orders.php';
 require_once __DIR__ . '/includes/class-click2eu-upgrades.php';
 require_once __DIR__ . '/includes/class-click2eu-category-access.php';
+require_once __DIR__ . '/includes/class-click2eu-notification-templates.php';
+require_once __DIR__ . '/includes/class-click2eu-notifications.php';
 require_once __DIR__ . '/includes/class-click2eu-access.php';
 require_once __DIR__ . '/includes/class-click2eu-cariera.php';
 require_once __DIR__ . '/includes/class-click2eu-status.php';
@@ -31,8 +33,10 @@ require_once __DIR__ . '/includes/class-click2eu-admin.php';
 register_activation_hook( __FILE__, array( 'Click2EU_Memberships', 'install' ) );
 register_activation_hook( __FILE__, array( 'Click2EU_Dashboard', 'activate' ) );
 register_activation_hook( __FILE__, array( 'Click2EU_Expiration', 'activate' ) );
+register_activation_hook( __FILE__, array( 'Click2EU_Notifications', 'install' ) );
 register_deactivation_hook( __FILE__, array( 'Click2EU_Expiration', 'deactivate' ) );
 register_deactivation_hook( __FILE__, array( 'Click2EU_Upgrades', 'deactivate' ) );
+register_deactivation_hook( __FILE__, array( 'Click2EU_Notifications', 'deactivate' ) );
 
 /**
  * Uses WooCommerce CRUD for order and order-item metadata (HPOS-friendly).
@@ -45,7 +49,7 @@ add_action( 'before_woocommerce_init', function () {
 } );
 
 final class Click2EU_Membership_Phase_One {
-    private const VERSION = '0.7.0';
+    private const VERSION = '0.7.1';
 
     /** Phase 1: existing, separately-created WooCommerce simple products. */
     private const PRODUCTS = array(
@@ -574,6 +578,7 @@ final class Click2EU_Membership_Phase_One {
 }
 
 add_action( 'plugins_loaded', array( 'Click2EU_Memberships', 'maybe_install' ), 20 );
+add_action( 'plugins_loaded', array( 'Click2EU_Notifications', 'maybe_install' ), 21 );
 
 new Click2EU_Membership_Phase_One();
 new Click2EU_Orders();
@@ -585,3 +590,4 @@ new Click2EU_Status();
 new Click2EU_Dashboard();
 new Click2EU_Expiration();
 new Click2EU_Admin();
+new Click2EU_Notifications();

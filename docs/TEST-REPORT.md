@@ -397,3 +397,65 @@ Cariera browser E2E because Cariera Addons is inactive and legitimate license
 activation is unavailable. **NOT TESTED:** a real mutating Cariera AJAX endpoint;
 the installed resume AJAX handler inspected is read-only. Static source inspection
 is not reported as an executed integration test.
+
+## 0.7.1 notification audit and tests
+
+The source audit identified ledger writes—not page views or WooCommerce status by
+itself—as the authoritative lifecycle boundary. v0.7.1 emits internal events only
+after successful Pending creation, activation/scheduling, renewal handoff,
+expiration, reversal or upgrade finalization. Administrator events require saved
+conflict/review markers. Every queued row is revalidated before transport.
+
+Executed locally with temporary example.invalid users, WooCommerce orders, order
+items, ledger rows, categories and job posts. `pre_wp_mail` intercepted every mail
+attempt; no external message was sent. All fixtures, notification rows and their
+scheduled actions were removed after each run.
+
+| Executed scenario | Result |
+|---|---|
+| Schema migration and no historical backfill | PASS |
+| New Pending membership / deduplicated payment event | PASS |
+| Valid activation / duplicate completion callback | PASS |
+| Failed activation creates no success event | PASS |
+| Scheduled renewal and Active handoff | PASS |
+| Scheduled renewal suppresses generic warnings | PASS |
+| Finalized upgrade and historical source behavior | PASS |
+| Activation conflict / upgrade review / payment lineage alerts | PASS |
+| Suspension, cancellation and duplicate reversal | PASS |
+| 7-day, 3-day and 1-day exact warning thresholds | PASS |
+| Exact UTC expiration and post-expiry warning rejection | PASS |
+| Candidate and configured administrator recipient resolution | PASS |
+| Transport accepted and transport rejected paths | PASS |
+| 5-minute / 30-minute retry backoff and three-attempt limit | PASS |
+| Terminal delivery-failure alert | PASS |
+| Duplicate event keys and concurrent worker claim | PASS |
+| Expired processing-lease recovery runner | PASS |
+| Action Scheduler availability and WP-Cron delivery/runner fallback | PASS |
+| Missing email and cross-user source isolation | PASS |
+| HTML sanitization, identity colors and plain-text rendering | PASS |
+| Candidate admin-capability denial and scoped retry nonce | PASS |
+| Existing category permission exact match | PASS |
+| Notification schema/version idempotency | PASS |
+
+Final notification suite: **55 PASS, 0 FAIL**. The existing v0.7.0 category
+suite previously completed **39 PASS, 0 FAIL** and the post-merge hardening check
+completed **5 PASS, 0 FAIL**.
+
+A final post-review smoke run completed **6 PASS, 0 FAIL** for Pending-order
+validation, intercepted Candidate delivery, stale Completed-order cancellation,
+cross-user order rejection, installed queue indexes and schema-version readback.
+An additional alert-precedence check completed **3 PASS, 0 FAIL**, confirming that
+lineage, upgrade-review and ordinary activation-conflict incidents each emit only
+their most specific administrator event.
+
+Static review confirmed prepared notification SQL, escaped administration output,
+stable event keys, no arbitrary recipient input, HPOS order CRUD, bounded scans,
+retention cleanup, deactivation unscheduling and the lack of message-body storage.
+
+**BLOCKED:** real SMTP/provider acceptance, spam placement and inbox delivery;
+production-volume Action Scheduler behavior; Cariera registration/login email
+integration; and Cariera browser E2E pending legitimate activation. A true process
+crash between mail transport acceptance and the final database update was not
+destructively simulated; the lease-recovery behavior surrounding that window was
+executed. Successful `wp_mail()` interception is reported only as transport
+acceptance, never confirmed inbox delivery.

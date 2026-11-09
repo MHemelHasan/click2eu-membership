@@ -171,7 +171,9 @@ final class Click2EU_Memberships {
 			return $existing ? absint( $existing->membership_id ) : 0;
 		}
 
-		return absint( $wpdb->insert_id );
+		$membership_id = absint( $wpdb->insert_id );
+		do_action( 'click2eu_membership_created', $membership_id );
+		return $membership_id;
 	}
 
 	public static function activate_membership( $membership_id, &$conflicting_membership_id = 0, $approved_order = null, &$activation_state = '' ) {
@@ -228,7 +230,7 @@ final class Click2EU_Memberships {
 				)
 			);
 			if ( $due_ids ) {
-				$wpdb->query(
+				$expired = $wpdb->query(
 					$wpdb->prepare(
 						'UPDATE ' . self::table_name() . " SET status = 'expired', expired_at = %s, updated_at = %s WHERE candidate_user_id = %d AND status = 'active' AND expires_at IS NOT NULL AND expires_at <= %s",
 						$now_mysql,
@@ -239,6 +241,7 @@ final class Click2EU_Memberships {
 				);
 				foreach ( $due_ids as $due_id ) {
 					Click2EU_Expiration::unschedule( $due_id );
+					if ( $expired ) { do_action( 'click2eu_membership_transition', absint( $due_id ), 'active', 'expired', 'activation_reconciliation' ); }
 				}
 			}
 
@@ -306,6 +309,7 @@ final class Click2EU_Memberships {
 				} else {
 					Click2EU_Expiration::schedule( $membership_id, $expires_at );
 				}
+				do_action( 'click2eu_membership_transition', absint( $membership_id ), 'pending', $status, 'approved_renewal' );
 				return true;
 			}
 
@@ -338,6 +342,7 @@ final class Click2EU_Memberships {
 			if ( 1 === $updated ) {
 				$activation_state = 'active';
 				Click2EU_Expiration::schedule( $membership_id, $expires_at );
+				do_action( 'click2eu_membership_transition', absint( $membership_id ), 'pending', 'active', 'approved_order' );
 				return true;
 			}
 			return false;
@@ -375,6 +380,9 @@ final class Click2EU_Memberships {
 				$result = false !== $updated && $result;
 				Click2EU_Expiration::unschedule( $membership->membership_id );
 				Click2EU_Expiration::unschedule_start( $membership->membership_id );
+				if ( $updated ) {
+					do_action( 'click2eu_membership_transition', absint( $membership->membership_id ), $membership->status, $new_status, 'order_reversal' );
+				}
 			} finally {
 				$wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $lock_name ) );
 			}
