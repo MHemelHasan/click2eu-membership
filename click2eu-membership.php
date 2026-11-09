@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Click2EU Membership
  * Description: Candidate membership packages, manual-payment activation, access control and WooCommerce integration for Click2EU.
- * Version: 0.5.0
+ * Version: 0.6.0
  * Requires Plugins: woocommerce
  * Requires PHP: 7.4
  * Author: HemelHasan
@@ -24,6 +24,7 @@ require_once __DIR__ . '/includes/class-click2eu-access.php';
 require_once __DIR__ . '/includes/class-click2eu-cariera.php';
 require_once __DIR__ . '/includes/class-click2eu-status.php';
 require_once __DIR__ . '/includes/class-click2eu-dashboard.php';
+require_once __DIR__ . '/includes/class-click2eu-admin.php';
 
 register_activation_hook( __FILE__, array( 'Click2EU_Memberships', 'install' ) );
 register_activation_hook( __FILE__, array( 'Click2EU_Dashboard', 'activate' ) );
@@ -41,7 +42,7 @@ add_action( 'before_woocommerce_init', function () {
 } );
 
 final class Click2EU_Membership_Phase_One {
-    private const VERSION = '0.5.0';
+    private const VERSION = '0.6.0';
 
     /** Phase 1: existing, separately-created WooCommerce simple products. */
     private const PRODUCTS = array(
@@ -308,6 +309,10 @@ final class Click2EU_Membership_Phase_One {
         }
 
         $this->form_count++;
+		$renewal_id = isset( $_GET['renew_membership'] ) ? absint( wp_unslash( $_GET['renew_membership'] ) ) : 0;
+		$renewal    = $renewal_id ? Click2EU_Memberships::get_membership( $renewal_id ) : null;
+		$is_renewal = $renewal && is_user_logged_in() && (int) $renewal->candidate_user_id === get_current_user_id() && 'active' === $renewal->status && $tier === $renewal->package_key;
+		$selected_category = $is_renewal ? absint( $renewal->category_term_id ) : 0;
         $select_id = 'c2eu-category-' . sanitize_html_class( $tier ) . '-' . $this->form_count;
         $html = '<form class="c2eu-join-form" method="post" action="">';
         $html .= '<input type="hidden" name="click2eu_join_submit" value="1">';
@@ -317,7 +322,7 @@ final class Click2EU_Membership_Phase_One {
         $html .= '<select id="' . esc_attr( $select_id ) . '" name="click2eu_category_id" required aria-required="true">';
         $html .= '<option value="">Select job category *</option>';
         foreach ( $categories as $category ) {
-            $html .= '<option value="' . esc_attr( $category->term_id ) . '">' . esc_html( $category->name ) . '</option>';
+			$html .= '<option value="' . esc_attr( $category->term_id ) . '"' . selected( $selected_category, $category->term_id, false ) . '>' . esc_html( $category->name ) . '</option>';
         }
         $html .= '</select>';
 
@@ -332,12 +337,14 @@ final class Click2EU_Membership_Phase_One {
                 'woocommerce'      => 'The checkout service is currently unavailable.',
                 'candidate_only'   => 'Candidate memberships require a Candidate account.',
                 'already_active'   => 'Your Candidate membership is already active.',
+				'upgrade_unavailable' => 'Mid-term upgrades are unavailable. Renewal must use the same package and job category.',
+				'renewal_unavailable' => 'This membership cannot be renewed yet. Please contact support.',
             );
             if ( isset( $errors[ $error_code ] ) ) {
                 $html .= '<p class="c2eu-form-error" role="alert">' . esc_html( $errors[ $error_code ] ) . '</p>';
             }
         }
-        $html .= '<button type="submit" class="c2eu-join-button">Join</button>';
+		$html .= '<button type="submit" class="c2eu-join-button">' . esc_html( $is_renewal ? __( 'Renew', 'click2eu-membership' ) : __( 'Join', 'click2eu-membership' ) ) . '</button>';
         $html .= '</form>';
         return $html;
     }
@@ -381,11 +388,8 @@ final class Click2EU_Membership_Phase_One {
             $this->redirect_error( 'candidate_only', $tier );
         }
 
-        if ( Click2EU_Memberships::has_active_membership( get_current_user_id() ) ) {
-            $this->redirect_error( 'already_active', $tier );
-        }
-
-        if ( Click2EU_Memberships::has_pending_membership( get_current_user_id() ) ) {
+		$user_id = get_current_user_id();
+		if ( Click2EU_Memberships::has_pending_membership( $user_id ) || Click2EU_Memberships::has_scheduled_membership( $user_id ) ) {
             wp_safe_redirect( Click2EU_Auth::my_orders_url() );
             exit;
         }
@@ -402,6 +406,18 @@ final class Click2EU_Membership_Phase_One {
         if ( ! $category || is_wp_error( $category ) || 'job_listing_category' !== $category->taxonomy ) {
             $this->redirect_error( 'invalid_category', $tier );
         }
+
+		$renewal_of = 0;
+		if ( Click2EU_Memberships::has_active_membership( $user_id ) ) {
+			$active = Click2EU_Memberships::get_membership_for_user( $user_id );
+			if ( ! $active || empty( $active->expires_at ) ) {
+				$this->redirect_error( 'renewal_unavailable', $tier );
+			}
+			if ( $active->package_key !== $tier || absint( $active->category_term_id ) !== $category_id ) {
+				$this->redirect_error( 'upgrade_unavailable', $tier );
+			}
+			$renewal_of = absint( $active->membership_id );
+		}
 
         $product_id = absint( $map[ $tier ] );
         $product    = wc_get_product( $product_id );
@@ -420,6 +436,8 @@ final class Click2EU_Membership_Phase_One {
             'click2eu_package'       => $tier,
             'click2eu_category_id'   => $category_id,
             'click2eu_category_name' => sanitize_text_field( $category->name ),
+			'click2eu_renewal_of_membership_id' => $renewal_of,
+			'click2eu_renewal_type' => $renewal_of ? 'early' : '',
         ) );
         if ( ! $new_cart_key ) {
             $this->redirect_error( 'add_to_cart', $tier );
@@ -496,6 +514,8 @@ final class Click2EU_Membership_Phase_One {
         $item->update_meta_data( '_click2eu_category_id', absint( $cart_item['click2eu_category_id'] ?? 0 ) );
         $item->update_meta_data( '_click2eu_package', sanitize_key( $cart_item['click2eu_package'] ?? '' ) );
         $item->update_meta_data( '_click2eu_duration_days', Click2EU_Config::duration_for_package( $cart_item['click2eu_package'] ?? '' ) );
+		$item->update_meta_data( '_click2eu_renewal_of_membership_id', absint( $cart_item['click2eu_renewal_of_membership_id'] ?? 0 ) );
+		$item->update_meta_data( '_click2eu_renewal_type', sanitize_key( $cart_item['click2eu_renewal_type'] ?? '' ) );
         $details = $this->readable_description( $cart_item['product_id'] ?? 0 );
         if ( $details ) {
             $item->update_meta_data( 'Package Includes', $details );
@@ -525,6 +545,8 @@ final class Click2EU_Membership_Phase_One {
             $order->update_meta_data( '_click2eu_category_id', absint( $cart_item['click2eu_category_id'] ?? 0 ) );
             $order->update_meta_data( '_click2eu_category_name', sanitize_text_field( $cart_item['click2eu_category_name'] ) );
             $order->update_meta_data( '_click2eu_duration_days', Click2EU_Config::duration_for_package( $cart_item['click2eu_package'] ?? '' ) );
+			$order->update_meta_data( '_click2eu_renewal_of_membership_id', absint( $cart_item['click2eu_renewal_of_membership_id'] ?? 0 ) );
+			$order->update_meta_data( '_click2eu_renewal_type', sanitize_key( $cart_item['click2eu_renewal_type'] ?? '' ) );
 
             // Store API / block checkout needs a separate path for order LINE metadata.
             foreach ( $order->get_items( 'line_item' ) as $item ) {
@@ -557,3 +579,4 @@ new Click2EU_Cariera();
 new Click2EU_Status();
 new Click2EU_Dashboard();
 new Click2EU_Expiration();
+new Click2EU_Admin();

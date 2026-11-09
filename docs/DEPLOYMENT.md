@@ -1,4 +1,57 @@
-# Click2EU Membership 0.5.0
+# Click2EU Membership 0.6.0
+
+## 0.6.0 early renewal and administration
+
+### Schema version 3.0.0
+
+The idempotent `dbDelta()` migration adds without replacing existing rows:
+
+- `renewal_of_membership_id bigint(20) unsigned NULL`
+- `renewal_type varchar(20) NOT NULL DEFAULT ''`
+- `starts_at datetime NULL`
+- `KEY renewal_parent (renewal_of_membership_id)`
+- `KEY candidate_starts (candidate_user_id, starts_at)`
+
+The version option is updated only after all renewal and expiration fields are
+verified. One WooCommerce order item still maps to one ledger row.
+
+### Renewal lifecycle
+
+1. A dated Active Candidate opens the dashboard Renew action.
+2. Checkout accepts only the same package and category and snapshots the parent
+   membership ID, `early` renewal type and full duration.
+3. The new ledger row remains Pending while manual payment is reviewed. The
+   existing Active row and expiry are unchanged.
+4. Completed approval changes the renewal to Scheduled, with `starts_at` equal
+   to the current expiry and a full new `expires_at` after it.
+5. `click2eu_start_membership` starts the renewal. If cron is delayed, an
+   entitlement lookup performs the same locked expiry/start handoff, preventing
+   an access gap.
+6. Approval and start transitions are idempotent. Candidate advisory locks and
+   scheduled-row checks prevent overlapping effective Active memberships.
+
+If approval occurs after the old term has already expired, the renewal starts at
+approval time rather than granting unpaid backdated access. A failed, cancelled
+or refunded scheduled renewal becomes Cancelled and leaves the old Active term
+unchanged. A refund after renewal activation makes that renewal Suspended.
+
+Legacy Active memberships with no expiry cannot enter early renewal because no
+safe future start boundary exists. No date is invented.
+
+### Administrator page
+
+**WP Admin > Click2EU Memberships** requires `manage_options`. It is read-only
+and shows Candidate, package/category, HPOS-safe order link/status, membership
+status, activation/start/expiry dates, renewal parent/children and activation
+conflicts. Filters cover Active, Pending, Scheduled, Expired, Suspended and
+Review Required. Payment approval remains exclusively in WooCommerce Orders;
+there is no Mark Paid or direct status control.
+
+### Upgrade boundary
+
+Different-package or different-category attempts remain blocked with an explicit
+upgrade-unavailable message. v0.6.0 implements no proration, price adjustment,
+unused-time refund, mid-term upgrade or automatic conflict resolution.
 
 ## 0.5.0 duration and expiration engine
 
@@ -201,3 +254,7 @@ orders, configuration and content.
    retain them to avoid destroying duration and expiry history.
 6. Before rollback, record any queued `click2eu_expire_membership` actions. If
    v0.5.0 is later restored, run reconciliation so overdue rows are processed.
+7. v0.6.0 also schedules `click2eu_start_membership`. Before rollback, record
+   Scheduled rows and queued starts; v0.5.0 does not understand that state.
+8. Never delete renewal columns or Scheduled rows during rollback. Restore
+   v0.6.0 and reconcile them after the incident is resolved.

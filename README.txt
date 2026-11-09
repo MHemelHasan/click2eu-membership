@@ -1,5 +1,18 @@
-Click2EU Membership (v0.5.0)
+Click2EU Membership (v0.6.0)
 =======================================
+
+v0.6.0 EARLY RENEWAL AND ADMIN MANAGEMENT:
+- Active dated memberships may renew only the same package and job category.
+- Renewal checkout and manual payment review do not alter the current term.
+- Approved early renewals become Scheduled and start at the current expiry.
+- Scheduled renewals receive their complete purchased term with no overlap,
+  proration, discount, unused-time refund or category change.
+- Access-time reconciliation starts a paid due renewal even when cron is late.
+- Failed/refunded scheduled renewals are cancelled; refunds after activation
+  suspend the renewed membership without rewriting earlier history.
+- Legacy Active memberships without expiry cannot renew automatically.
+- Adds an Administrator-only, read-only Click2EU Memberships lifecycle page.
+- Mid-term upgrades remain unavailable and are never converted into renewals.
 
 v0.5.0 DURATION AND EXPIRATION ENGINE:
 - Trusted server-side package terms: Basic 30, Pro 90, Premium 180 and Elite

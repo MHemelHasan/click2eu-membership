@@ -29,8 +29,12 @@ final class Click2EU_Orders {
 			return false;
 		}
 		if ( Click2EU_Memberships::has_active_membership( get_current_user_id() ) ) {
-			wc_add_notice( __( 'Your Candidate membership is already active.', 'click2eu-membership' ), 'error' );
-			return false;
+			$active = Click2EU_Memberships::get_membership_for_user( get_current_user_id() );
+			$valid_renewal = $active && ! empty( $active->expires_at ) && absint( $cart_item_data['click2eu_renewal_of_membership_id'] ?? 0 ) === absint( $active->membership_id ) && absint( $active->product_id ) === absint( $checked_id ) && absint( $active->category_term_id ) === absint( $cart_item_data['click2eu_category_id'] ?? 0 );
+			if ( ! $valid_renewal ) {
+				wc_add_notice( __( 'Mid-term upgrades are unavailable. Renew using the same package and job category.', 'click2eu-membership' ), 'error' );
+				return false;
+			}
 		}
 		if ( empty( $cart_item_data['click2eu_category_id'] ) || empty( $cart_item_data['click2eu_package'] ) ) {
 			wc_add_notice( __( 'Please choose a package and job category from the Join Us page.', 'click2eu-membership' ), 'error' );
@@ -52,10 +56,7 @@ final class Click2EU_Orders {
 		if ( count( $membership_items ) > 1 ) {
 			wc_add_notice( __( 'Only one Candidate membership package can be purchased per order.', 'click2eu-membership' ), 'error' );
 		}
-		if ( $membership_items && Click2EU_Memberships::has_active_membership( get_current_user_id() ) ) {
-			wc_add_notice( __( 'Your Candidate membership is already active.', 'click2eu-membership' ), 'error' );
-		}
-		if ( $membership_items && Click2EU_Memberships::has_pending_membership( get_current_user_id() ) ) {
+		if ( $membership_items && ( Click2EU_Memberships::has_pending_membership( get_current_user_id() ) || Click2EU_Memberships::has_scheduled_membership( get_current_user_id() ) ) ) {
 			wc_add_notice( __( 'You already have a membership order awaiting payment approval.', 'click2eu-membership' ), 'error' );
 		}
 		foreach ( WC()->cart->get_cart() as $item ) {
@@ -70,6 +71,12 @@ final class Click2EU_Orders {
 			$term        = $category_id ? get_term( $category_id, 'job_listing_category' ) : null;
 			if ( Click2EU_Config::package_for_product( $item['product_id'] ?? 0 ) !== $package || ! $term || is_wp_error( $term ) ) {
 				wc_add_notice( __( 'The membership package or job category is invalid. Please choose it again.', 'click2eu-membership' ), 'error' );
+			}
+			if ( Click2EU_Memberships::has_active_membership( get_current_user_id() ) ) {
+				$active = Click2EU_Memberships::get_membership_for_user( get_current_user_id() );
+				if ( ! $active || empty( $active->expires_at ) || absint( $item['click2eu_renewal_of_membership_id'] ?? 0 ) !== absint( $active->membership_id ) || $package !== $active->package_key || $category_id !== absint( $active->category_term_id ) ) {
+					wc_add_notice( __( 'Active memberships may renew only the same package and job category.', 'click2eu-membership' ), 'error' );
+				}
 			}
 		}
 	}
@@ -100,11 +107,13 @@ final class Click2EU_Orders {
 			$category_id = absint( $item->get_meta( '_click2eu_category_id', true ) );
 			$label       = sanitize_text_field( $item->get_meta( 'Job Category', true ) );
 			$duration    = absint( $item->get_meta( '_click2eu_duration_days', true ) );
+			$renewal_of  = absint( $item->get_meta( '_click2eu_renewal_of_membership_id', true ) );
+			$renewal_type = sanitize_key( $item->get_meta( '_click2eu_renewal_type', true ) );
 			$term        = $category_id ? get_term( $category_id, 'job_listing_category' ) : null;
 			if ( ! $term || is_wp_error( $term ) || '' === $label ) {
 				continue;
 			}
-			$membership_id = Click2EU_Memberships::create_pending( $order, $item, $package, $category_id, $label, $duration );
+			$membership_id = Click2EU_Memberships::create_pending( $order, $item, $package, $category_id, $label, $duration, $renewal_of, $renewal_type );
 			if ( $membership_id ) {
 				$order->update_meta_data( '_click2eu_membership_id', $membership_id );
 				$order->save();
@@ -126,7 +135,7 @@ final class Click2EU_Orders {
 			$order->save();
 			return;
 		}
-		if ( 'completed' !== $to || $order->get_meta( '_click2eu_membership_activated', true ) || $order->get_meta( '_click2eu_membership_suspended', true ) || self::has_activation_conflict( $order ) ) {
+		if ( 'completed' !== $to || $order->get_meta( '_click2eu_membership_activated', true ) || $order->get_meta( '_click2eu_membership_scheduled', true ) || $order->get_meta( '_click2eu_membership_suspended', true ) || self::has_activation_conflict( $order ) ) {
 			return;
 		}
 		$user = $order->get_user();
@@ -139,9 +148,15 @@ final class Click2EU_Orders {
 			return;
 		}
 		$conflicting_membership_id = 0;
-		if ( Click2EU_Memberships::activate_membership( $membership->membership_id, $conflicting_membership_id, $order ) ) {
-			$order->update_meta_data( '_click2eu_membership_activated', absint( $membership->membership_id ) );
-			$order->add_order_note( __( 'Click2EU Candidate membership activated.', 'click2eu-membership' ) );
+		$activation_state = '';
+		if ( Click2EU_Memberships::activate_membership( $membership->membership_id, $conflicting_membership_id, $order, $activation_state ) ) {
+			if ( 'scheduled' === $activation_state ) {
+				$order->update_meta_data( '_click2eu_membership_scheduled', absint( $membership->membership_id ) );
+				$order->add_order_note( __( 'Click2EU renewal approved and scheduled to begin when the current membership expires.', 'click2eu-membership' ) );
+			} else {
+				$order->update_meta_data( '_click2eu_membership_activated', absint( $membership->membership_id ) );
+				$order->add_order_note( __( 'Click2EU Candidate membership activated.', 'click2eu-membership' ) );
+			}
 			$order->save();
 		} elseif ( $conflicting_membership_id ) {
 			$order->update_meta_data( self::ACTIVATION_CONFLICT_META, $conflicting_membership_id );
