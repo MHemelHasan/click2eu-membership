@@ -95,6 +95,7 @@ final class Click2EU_Dashboard {
 		$html .= '<h2 id="c2eu-membership-heading">' . esc_html__( 'My Membership', 'click2eu-membership' ) . '</h2></header>';
 		$html .= $this->render_current_membership( $current, $user_id );
 		$html .= $this->render_renewal( $renewal, $user_id );
+		$html .= Click2EU_Upgrades::render_for( $current );
 		$html .= $this->render_history( $history, $user_id, $page, $total_pages );
 		$html .= '</section>';
 
@@ -157,16 +158,25 @@ final class Click2EU_Dashboard {
 			return '';
 		}
 		$order = $this->owned_order( $renewal, $user_id );
-		$html  = '<div class="c2eu-dashboard__section c2eu-dashboard__renewal"><h3>' . esc_html__( 'Renewal', 'click2eu-membership' ) . '</h3><article class="c2eu-dashboard__card">';
-		$html .= '<div class="c2eu-dashboard__card-heading"><div><p class="c2eu-dashboard__message">' . esc_html( 'scheduled' === $renewal->status ? __( 'Payment approved. Your renewal is scheduled.', 'click2eu-membership' ) : __( 'Renewal payment is awaiting verification.', 'click2eu-membership' ) ) . '</p>';
+		$is_upgrade = 'upgrade' === $renewal->renewal_type;
+		$needs_review = $is_upgrade && $order && ( $order->get_meta( Click2EU_Upgrades::REVIEW_META, true ) || Click2EU_Orders::has_activation_conflict( $order ) );
+		$html  = '<div class="c2eu-dashboard__section c2eu-dashboard__renewal"><h3>' . esc_html( $is_upgrade ? __( 'Pending Upgrade', 'click2eu-membership' ) : __( 'Renewal', 'click2eu-membership' ) ) . '</h3><article class="c2eu-dashboard__card">';
+		$message = $needs_review ? __( 'This upgrade requires administrator review. No upgrade access has been granted.', 'click2eu-membership' ) : ( $is_upgrade ? __( 'Upgrade payment is awaiting administrator verification. Your current membership remains active.', 'click2eu-membership' ) : ( 'scheduled' === $renewal->status ? __( 'Payment approved. Your renewal is scheduled.', 'click2eu-membership' ) : __( 'Renewal payment is awaiting verification.', 'click2eu-membership' ) ) );
+		$html .= '<div class="c2eu-dashboard__card-heading"><div><p class="c2eu-dashboard__message">' . esc_html( $message ) . '</p>';
 		$html .= '<h4>' . esc_html( $this->package_name( $renewal ) ) . '</h4></div>' . $this->status_badge( $renewal->status ) . '</div><dl class="c2eu-dashboard__details">';
 		$html .= $this->detail_row( __( 'Job Category', 'click2eu-membership' ), $renewal->category_label );
 		$html .= $this->detail_row( __( 'Renewal Start Date', 'click2eu-membership' ), $this->start_date( $renewal ) );
 		$html .= $this->detail_row( __( 'Expiration Date', 'click2eu-membership' ), $this->expiration_date( $renewal ) );
 		$html .= $this->detail_row( __( 'Order', 'click2eu-membership' ), $order ? '#' . $order->get_order_number() : __( 'Order unavailable', 'click2eu-membership' ) );
+		if ( $is_upgrade && $order ) {
+			$source = Click2EU_Memberships::get_membership( $renewal->renewal_of_membership_id );
+			$html .= $this->detail_row( __( 'Upgrade', 'click2eu-membership' ), ucfirst( $source ? $source->package_key : '' ) . ' → ' . ucfirst( $renewal->package_key ) );
+			$html .= $this->detail_row( __( 'Unused-time Credit', 'click2eu-membership' ), wp_strip_all_tags( wc_price( $order->get_meta( '_click2eu_upgrade_credit_amount', true ), array( 'currency' => $order->get_currency() ) ) ) );
+			$html .= $this->detail_row( __( 'Amount Due', 'click2eu-membership' ), wp_strip_all_tags( wc_price( $order->get_meta( '_click2eu_upgrade_final_charge', true ), array( 'currency' => $order->get_currency() ) ) ) );
+		}
 		$html .= '</dl>';
 		if ( $order ) {
-			$html .= '<div class="c2eu-dashboard__actions"><a class="c2eu-dashboard__link" href="' . esc_url( $order->get_view_order_url() ) . '">' . esc_html__( 'View Renewal Order', 'click2eu-membership' ) . '</a></div>';
+			$html .= '<div class="c2eu-dashboard__actions"><a class="c2eu-dashboard__link" href="' . esc_url( $order->get_view_order_url() ) . '">' . esc_html( $is_upgrade ? __( 'View Upgrade Order', 'click2eu-membership' ) : __( 'View Renewal Order', 'click2eu-membership' ) ) . '</a></div>';
 		}
 		return $html . '</article></div>';
 	}
@@ -288,6 +298,7 @@ final class Click2EU_Dashboard {
 			'cancelled' => __( 'This membership was cancelled.', 'click2eu-membership' ),
 			'expired'   => __( 'This membership is no longer active.', 'click2eu-membership' ),
 			'scheduled' => __( 'This renewal is scheduled.', 'click2eu-membership' ),
+			'upgraded'  => __( 'This membership was replaced by an approved upgrade.', 'click2eu-membership' ),
 		);
 		return isset( $messages[ $status ] ) ? $messages[ $status ] : __( 'Membership status is unavailable.', 'click2eu-membership' );
 	}
@@ -303,6 +314,7 @@ final class Click2EU_Dashboard {
 			'cancelled' => __( 'Cancelled', 'click2eu-membership' ),
 			'expired'   => __( 'Expired', 'click2eu-membership' ),
 			'scheduled' => __( 'Scheduled', 'click2eu-membership' ),
+			'upgraded'  => __( 'Upgraded', 'click2eu-membership' ),
 		);
 		$label = isset( $labels[ $status ] ) ? $labels[ $status ] : __( 'Unknown', 'click2eu-membership' );
 		return '<span class="c2eu-dashboard__badge c2eu-dashboard__badge--' . esc_attr( $status ) . '">' . esc_html( $label ) . '</span>';

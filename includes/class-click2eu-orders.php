@@ -30,7 +30,8 @@ final class Click2EU_Orders {
 		}
 		if ( Click2EU_Memberships::has_active_membership( get_current_user_id() ) ) {
 			$active = Click2EU_Memberships::get_membership_for_user( get_current_user_id() );
-			$valid_renewal = $active && ! empty( $active->expires_at ) && absint( $cart_item_data['click2eu_renewal_of_membership_id'] ?? 0 ) === absint( $active->membership_id ) && absint( $active->product_id ) === absint( $checked_id ) && absint( $active->category_term_id ) === absint( $cart_item_data['click2eu_category_id'] ?? 0 );
+			$is_upgrade = 'upgrade' === sanitize_key( $cart_item_data['click2eu_renewal_type'] ?? '' );
+			$valid_renewal = $active && ! empty( $active->expires_at ) && absint( $cart_item_data['click2eu_renewal_of_membership_id'] ?? 0 ) === absint( $active->membership_id ) && absint( $active->category_term_id ) === absint( $cart_item_data['click2eu_category_id'] ?? 0 ) && ( absint( $active->product_id ) === absint( $checked_id ) || ( $is_upgrade && Click2EU_Config::package_for_product( $checked_id ) && in_array( Click2EU_Config::package_for_product( $checked_id ), Click2EU_Upgrades::allowed_targets( $active->package_key ), true ) ) );
 			if ( ! $valid_renewal ) {
 				wc_add_notice( __( 'Mid-term upgrades are unavailable. Renew using the same package and job category.', 'click2eu-membership' ), 'error' );
 				return false;
@@ -74,7 +75,9 @@ final class Click2EU_Orders {
 			}
 			if ( Click2EU_Memberships::has_active_membership( get_current_user_id() ) ) {
 				$active = Click2EU_Memberships::get_membership_for_user( get_current_user_id() );
-				if ( ! $active || empty( $active->expires_at ) || absint( $item['click2eu_renewal_of_membership_id'] ?? 0 ) !== absint( $active->membership_id ) || $package !== $active->package_key || $category_id !== absint( $active->category_term_id ) ) {
+				$is_upgrade = 'upgrade' === sanitize_key( $item['click2eu_renewal_type'] ?? '' );
+				$valid_package = $package === $active->package_key || ( $is_upgrade && in_array( $package, Click2EU_Upgrades::allowed_targets( $active->package_key ), true ) );
+				if ( ! $active || empty( $active->expires_at ) || absint( $item['click2eu_renewal_of_membership_id'] ?? 0 ) !== absint( $active->membership_id ) || ! $valid_package || $category_id !== absint( $active->category_term_id ) ) {
 					wc_add_notice( __( 'Active memberships may renew only the same package and job category.', 'click2eu-membership' ), 'error' );
 				}
 			}
@@ -129,6 +132,7 @@ final class Click2EU_Orders {
 		$this->record_pending_order( $order );
 
 		if ( in_array( $to, array( 'failed', 'cancelled', 'refunded' ), true ) ) {
+			Click2EU_Upgrades::handle_source_reversal( $order_id );
 			Click2EU_Memberships::suspend_order( $order_id );
 			$order->update_meta_data( '_click2eu_membership_suspended', Click2EU_Time::mysql() );
 			$order->add_order_note( __( 'Click2EU Candidate membership suspended after order reversal.', 'click2eu-membership' ) );
@@ -149,6 +153,17 @@ final class Click2EU_Orders {
 		}
 		$conflicting_membership_id = 0;
 		$activation_state = '';
+		if ( 'upgrade' === $membership->renewal_type ) {
+			if ( Click2EU_Upgrades::activate( $membership, $order, $conflicting_membership_id ) ) {
+				return;
+			}
+			$order->update_meta_data( self::ACTIVATION_CONFLICT_META, $conflicting_membership_id ?: absint( $membership->renewal_of_membership_id ) );
+			$order->update_meta_data( self::ACTIVATION_CONFLICT_AT_META, Click2EU_Time::mysql() );
+			$order->update_meta_data( Click2EU_Upgrades::REVIEW_META, Click2EU_Time::mysql() );
+			$order->add_order_note( __( 'Click2EU upgrade activation blocked because its frozen source, payment, ownership, or lifecycle assumptions changed. Manual administrator review is required.', 'click2eu-membership' ) );
+			$order->save();
+			return;
+		}
 		if ( Click2EU_Memberships::activate_membership( $membership->membership_id, $conflicting_membership_id, $order, $activation_state ) ) {
 			if ( 'scheduled' === $activation_state ) {
 				$order->update_meta_data( '_click2eu_membership_scheduled', absint( $membership->membership_id ) );

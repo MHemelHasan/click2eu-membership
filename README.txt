@@ -167,3 +167,22 @@ TEST CHECKLIST:
 
 Safety: PHP lint passed at packaging time. The ZIP was not installed on your live
 WordPress/Cariera site; verify the flow on staging before going live.
+Click2EU Membership 0.6.1
+=========================
+
+Version 0.6.1 adds secure mid-term upgrades from Basic to Pro/Premium/Elite,
+Pro to Premium/Elite, and Premium to Elite in the same job category. A trusted
+server quote credits the unrefunded, post-discount net source line in proportion
+to its remaining seconds. Checkout stores the frozen inputs in WooCommerce order
+metadata and never accepts a browser-supplied price.
+
+The automated calculation is deliberately available only when WooCommerce taxes
+are disabled, both orders use the store currency, and every refund is attributable
+to the source membership line. Coupons cannot be applied to an upgrade order.
+Completed remains the sole manual-payment approval trigger, including a zero-total
+upgrade. Ambiguous financial cases are blocked for administrator review.
+
+An approved upgrade marks the previous ledger row Upgraded, activates the target
+for its full new duration, preserves the previous expiry for audit, and consumes
+the source credit once. Refunds never automatically restore the previous term or
+issue cash for unused credit.

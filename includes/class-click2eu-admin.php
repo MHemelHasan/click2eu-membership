@@ -37,26 +37,24 @@ final class Click2EU_Admin {
 			wp_die( esc_html__( 'You are not allowed to view membership administration.', 'click2eu-membership' ), '', array( 'response' => 403 ) );
 		}
 		global $wpdb;
-		$allowed = array( 'all', 'active', 'pending', 'scheduled', 'expired', 'suspended', 'review' );
+		$allowed = array( 'all', 'active', 'pending', 'scheduled', 'expired', 'suspended', 'upgraded', 'review' );
 		$filter  = isset( $_GET['membership_status'] ) ? sanitize_key( wp_unslash( $_GET['membership_status'] ) ) : 'all';
 		$filter  = in_array( $filter, $allowed, true ) ? $filter : 'all';
 		$where   = '';
 		if ( ! in_array( $filter, array( 'all', 'review' ), true ) ) {
 			$where = $wpdb->prepare( ' WHERE status = %s', $filter );
-		} elseif ( 'review' === $filter ) {
-			$where = " WHERE status = 'pending'";
 		}
 		$memberships = $wpdb->get_results( 'SELECT * FROM ' . Click2EU_Memberships::table_name() . $where . ' ORDER BY membership_id DESC LIMIT 200' );
 		if ( 'review' === $filter ) {
 			$memberships = array_values( array_filter( $memberships, static function ( $membership ) {
 				$order = wc_get_order( $membership->order_id );
-				return $order && Click2EU_Orders::has_activation_conflict( $order );
+				return $order && ( Click2EU_Orders::has_activation_conflict( $order ) || $order->get_meta( Click2EU_Upgrades::REVIEW_META, true ) );
 			} ) );
 		}
 
 		echo '<div class="wrap c2eu-admin-memberships"><h1>' . esc_html__( 'Click2EU Memberships', 'click2eu-membership' ) . '</h1>';
 		echo '<p>' . esc_html__( 'Read-only lifecycle review. Payment approval remains in WooCommerce Orders.', 'click2eu-membership' ) . '</p><nav class="c2eu-admin-filters">';
-		foreach ( array( 'all' => 'All', 'active' => 'Active', 'pending' => 'Pending', 'scheduled' => 'Scheduled', 'expired' => 'Expired', 'suspended' => 'Suspended', 'review' => 'Review Required' ) as $key => $label ) {
+		foreach ( array( 'all' => 'All', 'active' => 'Active', 'pending' => 'Pending', 'scheduled' => 'Scheduled', 'expired' => 'Expired', 'suspended' => 'Suspended', 'upgraded' => 'Upgraded', 'review' => 'Review Required' ) as $key => $label ) {
 			$url = add_query_arg( array( 'page' => self::PAGE_SLUG, 'membership_status' => $key ), admin_url( 'admin.php' ) );
 			echo '<a class="' . esc_attr( $filter === $key ? 'current' : '' ) . '" href="' . esc_url( $url ) . '">' . esc_html( $label ) . '</a>';
 		}
@@ -67,7 +65,7 @@ final class Click2EU_Admin {
 		foreach ( $memberships as $membership ) {
 			$user     = get_userdata( $membership->candidate_user_id );
 			$order    = wc_get_order( $membership->order_id );
-			$conflict = $order && Click2EU_Orders::has_activation_conflict( $order );
+			$conflict = $order && ( Click2EU_Orders::has_activation_conflict( $order ) || $order->get_meta( Click2EU_Upgrades::REVIEW_META, true ) );
 			$children = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Click2EU_Memberships::table_name() . ' WHERE renewal_of_membership_id = %d', $membership->membership_id ) );
 			echo '<tr><td>#' . esc_html( $membership->membership_id ) . '</td>';
 			echo '<td>' . esc_html( $user ? $user->display_name : __( 'Deleted user', 'click2eu-membership' ) ) . '<br><small>ID ' . esc_html( $membership->candidate_user_id ) . '</small></td>';
@@ -79,7 +77,11 @@ final class Click2EU_Admin {
 			}
 			echo '</td><td><strong>' . esc_html( ucfirst( $membership->status ) ) . '</strong></td>';
 			echo '<td>' . esc_html( $this->date( $membership->activated_at ) ) . '</td><td>' . esc_html( $this->date( $membership->starts_at ) ) . '</td><td>' . esc_html( $this->date( $membership->expires_at ) ) . '</td>';
-			echo '<td>' . ( $membership->renewal_of_membership_id ? 'Renews #' . esc_html( $membership->renewal_of_membership_id ) : '—' ) . ( $children ? '<br><small>' . esc_html( $children ) . ' renewal(s)</small>' : '' ) . '</td>';
+			if ( 'upgrade' === $membership->renewal_type && $order ) {
+				echo '<td>Upgrade from #' . esc_html( $membership->renewal_of_membership_id ) . '<br><small>' . esc_html( $order->get_meta( '_click2eu_upgrade_credit_amount', true ) . ' ' . $order->get_currency() . ' credit / ' . $order->get_meta( '_click2eu_upgrade_final_charge', true ) . ' charged' ) . '</small></td>';
+			} else {
+				echo '<td>' . ( $membership->renewal_of_membership_id ? 'Renews #' . esc_html( $membership->renewal_of_membership_id ) : '—' ) . ( $children ? '<br><small>' . esc_html( $children ) . ' renewal(s)</small>' : '' ) . '</td>';
+			}
 			echo '<td>' . esc_html( $conflict ? __( 'Activation conflict', 'click2eu-membership' ) : '—' ) . '</td></tr>';
 		}
 		echo '</tbody></table></div></div>';
