@@ -1,7 +1,7 @@
-Click2EU Membership (v0.7.4 release candidate)
+Click2EU Membership (v0.7.4)
 =======================================
 
-v0.7.4 PHASE-1 ACCESS CONTROL CANDIDATE (NOT RELEASED):
+v0.7.4 PHASE-1 ACCESS CONTROL:
 - Adds a centralized actor/route policy covering protected job, company and
   resume HTML routes, AJAX, REST, search, feeds and sitemaps.
 - Adds WP Admin > Click2EU Memberships > Settings for environment-specific Page
@@ -22,9 +22,9 @@ v0.7.4 PHASE-1 ACCESS CONTROL CANDIDATE (NOT RELEASED):
   validated WordPress-login fallback when that page is not mapped.
 - Notification diagnostics now provide counts, bounded pagination, status chips
   and failed-only retry controls without changing queue or schema semantics.
-- This v0.7.4 release candidate is not release-ready until legitimate Cariera
-  Core/Addons runtime browser E2E is completed. Do not deploy or merge it from
-  the feature branch.
+- The final v0.7.4 code artifact is intended for controlled acceptance on the
+  owner's Cariera-enabled pre-launch site. Client launch approval remains
+  conditional on the documented Candidate, Employer and Cariera browser E2E.
 
 v0.7.3 DASHBOARD FORM PRESERVATION:
 - Preserves the nonce-protected renewal and upgrade forms when rendering the

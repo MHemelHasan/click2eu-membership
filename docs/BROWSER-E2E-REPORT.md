@@ -1,5 +1,14 @@
 # v0.8.0-A Independent Browser E2E Report
 
+## v0.7.4 final-build verification (2026-11-10)
+
+The final-build pass repeated PHP 8.2/8.4 lint, WordPress initialization,
+WooCommerce 11.2.2 with HPOS enabled, guest Join rendering in Chromium, legacy
+authentication fallback, protected Jobs redirect headers, structured guest AJAX
+denial, empty-cart Checkout handling and notification-admin rendering. All
+available checks passed. This evidence authorizes the final code artifact for
+controlled QA; it does not replace the still-pending Cariera-enabled scenarios.
+
 ## v0.7.4 RC1 final-polish evidence (2026-11-10)
 
 Real Chromium browser checks confirmed that direct guest Join remains public,

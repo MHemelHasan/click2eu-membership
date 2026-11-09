@@ -1,6 +1,12 @@
 # Click2EU Membership deployment
 
-## v0.7.4 Phase-1 candidate (release blocked)
+## v0.7.4 final artifact and conditional launch status
+
+The final 0.7.4 plugin artifact has been authorized for controlled acceptance.
+This is a code-package milestone, not client launch approval. Local PHP,
+WordPress, WooCommerce/HPOS, guest routing, Join rendering and notification-admin
+checks passed; real Cariera Candidate/Employer handlers remain pending on the
+legitimately activated pre-launch environment.
 
 Final-polish deployment requirements:
 
@@ -11,9 +17,14 @@ Final-polish deployment requirements:
   `click2eu_auth=1` query must redirect and must never render inline forms.
 - Purge page/CDN caches after activation so the 28px desktop and 20px mobile
   notice spacing and notification-admin stylesheet are current.
-- Do not merge, deploy, or label v0.7.4 final until Candidate and Employer login,
-  registration, logout, Active/Dashboard routing, unpaid/Join routing, and
-  Cart/Checkout continuation pass with legitimately activated Cariera handlers.
+- Do not approve client launch until Candidate and Employer login, registration,
+  logout, Active/Dashboard routing, unpaid/Join routing, and Cart/Checkout
+  continuation pass with legitimately activated Cariera handlers.
+
+Owner handoff: retain the known-good v0.7.3 ZIP, upload only the v0.7.4 plugin
+ZIP, replace/activate the membership plugin, verify every Click2EU page mapping
+and live category mapping, clear plugin/page/CDN caches, and execute the launch
+checklist. Do not import the LocalWP database or edit licensed Cariera source.
 
 The feature branch introduces `Click2EU_Settings`, `Click2EU_Route_Policy` and
 server-side adapters in `Click2EU_Access`. It does not add or migrate a database

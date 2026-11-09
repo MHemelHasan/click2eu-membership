@@ -1,5 +1,17 @@
 # Phase-1 Launch Configuration and Acceptance Checklist
 
+## Final artifact handoff
+
+- [x] Final source version is consistently 0.7.4.
+- [x] PHP 8.2 and PHP 8.4 lint pass.
+- [x] WordPress initializes with WooCommerce 11.2.2 and HPOS enabled.
+- [x] Final code artifact approved for controlled Cariera-enabled acceptance.
+- [ ] Retain the working v0.7.3 ZIP before replacing the plugin.
+- [ ] Verify production page and category mappings; never import the LocalWP DB.
+- [ ] Clear plugin, page and CDN caches after installation.
+- [ ] Verify actual persisted resume/application/order/membership records.
+- [ ] Set CLIENT LAUNCH to GO only after every critical acceptance item passes.
+
 ## v0.7.4 RC1 final acceptance additions
 
 - [x] Direct Join is public and contains no injected authentication forms.
@@ -13,7 +25,7 @@
 - [x] Notification admin CSS is scoped to Membership, Settings and Notifications.
 - [x] Notification counts and bounded pagination render without full-row scans.
 - [x] Uncertain notifications expose review guidance but no ordinary Retry action.
-- [ ] Approve final v0.7.4 only after legitimate Cariera browser acceptance.
+- [x] Approve final v0.7.4 artifact for controlled Cariera browser acceptance.
 
 Status: **NO-GO until every critical staging row passes with legitimately active
 Cariera Core/Addons.** This checklist is preparation only and authorizes no live
@@ -74,7 +86,8 @@ deployment.
 - [ ] Verify release ZIP root is exactly `click2eu-membership/`, contains no Git,
   test fixtures, backups, credentials or licensed vendor code, and record SHA-256.
 - [ ] Deploy to staging first, purge all cache layers and execute this checklist.
-- [ ] Approve `develop` merge and v0.7.4 release only after zero critical failures.
+- [x] Merge the owner-authorized final v0.7.4 artifact into `develop`.
+- [ ] Approve client launch only after zero critical Cariera acceptance failures.
 - [ ] For rollback, restore the plugin atomically, purge caches and recheck Join,
   Checkout, My Account, callbacks and scheduled actions. Do not replace the live
   database with the local database.

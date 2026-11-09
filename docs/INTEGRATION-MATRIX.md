@@ -1,5 +1,11 @@
 # v0.8.0-A Integration Matrix
 
+## v0.7.4 final artifact status
+
+Final package status: **built for controlled pre-launch acceptance**. Client
+launch status: **NO-GO until every critical Cariera-enabled row below passes**.
+Unexecuted vendor-handler scenarios remain BLOCKED/NOT TESTED, never PASS.
+
 ## v0.7.4 RC1 final-polish matrix
 
 | Actor / request | Expected destination / response | Local result |

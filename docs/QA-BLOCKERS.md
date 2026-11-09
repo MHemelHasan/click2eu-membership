@@ -2,11 +2,16 @@
 
 ## v0.7.4 Phase-1 launch decision: NO-GO
 
+The final v0.7.4 source/package is approved as a release artifact for controlled
+testing. This does not clear the client-launch blockers in this document. Client
+launch remains NO-GO until legitimate Cariera Candidate/Employer, resume,
+application, company/job and checkout acceptance completes with persisted-state
+verification.
+
 The access-control and final UI/authentication polish passed source, read-only
 WordPress runtime, local HTTP and real headless Chrome guest-routing checks.
-Critical real Cariera-handler evidence remains unavailable. The feature branch
-is now a v0.7.4 release candidate only; no final release, `develop` merge or
-deployment is authorized by the current evidence.
+Critical real Cariera-handler evidence remains unavailable. The local evidence
+supports packaging and controlled acceptance, but not production launch.
 
 Authenticated live diagnosis is also blocked. A disposable Chrome profile could
 reach the public host only through its password-protection redirect, and no live
