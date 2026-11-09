@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Click2EU Membership
  * Description: Candidate membership packages, manual-payment activation, access control and WooCommerce integration for Click2EU.
- * Version: 0.6.3
+ * Version: 0.7.0
  * Requires Plugins: woocommerce
  * Requires PHP: 7.4
  * Author: HemelHasan
@@ -21,6 +21,7 @@ require_once __DIR__ . '/includes/class-click2eu-memberships.php';
 require_once __DIR__ . '/includes/class-click2eu-expiration.php';
 require_once __DIR__ . '/includes/class-click2eu-orders.php';
 require_once __DIR__ . '/includes/class-click2eu-upgrades.php';
+require_once __DIR__ . '/includes/class-click2eu-category-access.php';
 require_once __DIR__ . '/includes/class-click2eu-access.php';
 require_once __DIR__ . '/includes/class-click2eu-cariera.php';
 require_once __DIR__ . '/includes/class-click2eu-status.php';
@@ -44,7 +45,7 @@ add_action( 'before_woocommerce_init', function () {
 } );
 
 final class Click2EU_Membership_Phase_One {
-    private const VERSION = '0.6.3';
+    private const VERSION = '0.7.0';
 
     /** Phase 1: existing, separately-created WooCommerce simple products. */
     private const PRODUCTS = array(
@@ -577,6 +578,7 @@ add_action( 'plugins_loaded', array( 'Click2EU_Memberships', 'maybe_install' ), 
 new Click2EU_Membership_Phase_One();
 new Click2EU_Orders();
 new Click2EU_Upgrades();
+new Click2EU_Category_Access();
 new Click2EU_Access();
 new Click2EU_Cariera();
 new Click2EU_Status();

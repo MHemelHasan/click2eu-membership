@@ -58,9 +58,9 @@ final class Click2EU_Admin {
 			$url = add_query_arg( array( 'page' => self::PAGE_SLUG, 'membership_status' => $key ), admin_url( 'admin.php' ) );
 			echo '<a class="' . esc_attr( $filter === $key ? 'current' : '' ) . '" href="' . esc_url( $url ) . '">' . esc_html( $label ) . '</a>';
 		}
-		echo '</nav><div class="c2eu-admin-table-wrap"><table class="widefat striped"><thead><tr><th>ID</th><th>Candidate</th><th>Package / Category</th><th>Order</th><th>Status</th><th>Activated</th><th>Starts</th><th>Expires</th><th>Renewal</th><th>Review</th></tr></thead><tbody>';
+		echo '</nav><div class="c2eu-admin-table-wrap"><table class="widefat striped"><thead><tr><th>ID</th><th>Candidate</th><th>Package / Category</th><th>Category Authorization</th><th>Order</th><th>Status</th><th>Activated</th><th>Starts</th><th>Expires</th><th>Renewal</th><th>Review</th></tr></thead><tbody>';
 		if ( ! $memberships ) {
-			echo '<tr><td colspan="10">' . esc_html__( 'No memberships found.', 'click2eu-membership' ) . '</td></tr>';
+			echo '<tr><td colspan="11">' . esc_html__( 'No memberships found.', 'click2eu-membership' ) . '</td></tr>';
 		}
 		foreach ( $memberships as $membership ) {
 			$user     = get_userdata( $membership->candidate_user_id );
@@ -69,7 +69,10 @@ final class Click2EU_Admin {
 			$children = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Click2EU_Memberships::table_name() . ' WHERE renewal_of_membership_id = %d', $membership->membership_id ) );
 			echo '<tr><td>#' . esc_html( $membership->membership_id ) . '</td>';
 			echo '<td>' . esc_html( $user ? $user->display_name : __( 'Deleted user', 'click2eu-membership' ) ) . '<br><small>ID ' . esc_html( $membership->candidate_user_id ) . '</small></td>';
-			echo '<td><strong>' . esc_html( ucfirst( $membership->package_key ) ) . '</strong><br>' . esc_html( $membership->category_label ) . '</td><td>';
+			$category = get_term( absint( $membership->category_term_id ), Click2EU_Category_Access::JOB_TAXONOMY );
+			$category_status = $category && ! is_wp_error( $category ) ? Click2EU_Category_Access::mapping_status( $membership->category_term_id ) : __( 'Purchased job category missing or deleted', 'click2eu-membership' );
+			echo '<td><strong>' . esc_html( ucfirst( $membership->package_key ) ) . '</strong><br>' . esc_html( $membership->category_label ) . '</td>';
+			echo '<td>' . esc_html( $category_status ) . '</td><td>';
 			if ( $order ) {
 				echo '<a href="' . esc_url( $order->get_edit_order_url() ) . '">#' . esc_html( $order->get_order_number() ) . '</a><br><small>' . esc_html( wc_get_order_status_name( $order->get_status() ) ) . '</small>';
 			} else {

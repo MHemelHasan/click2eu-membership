@@ -342,3 +342,58 @@ test cursor were removed or reset after execution.
 Classic Checkout, browser-driven Checkout Blocks, real BACS timing, or production
 Action Scheduler load. **BLOCKED:** Cariera browser E2E pending legitimate local
 license activation. Static review is not counted as an executed browser test.
+
+## 0.7.0 category access-control audit and tests
+
+Baseline audit found that inactive Candidates were blocked from dashboard/resume
+pages and heuristic resume/application REST writes, while active Candidates were
+correctly not denied. Public reads and unrelated REST routes were not broadly
+blocked. The high-severity gap was the absence of category authorization for an
+active Candidate across application, resume and REST write paths. v0.7.0 replaces
+the route heuristic with resource-aware authorization for the verified scope.
+
+Executed locally with temporary users, ledger rows, job posts and terms. Because
+Cariera Addons is inactive, a temporary `resume` post type and `resume_category`
+taxonomy matching the inspected vendor schema were registered only inside the test
+process. Every database fixture was removed afterward.
+
+| Scenario | Result |
+|---|---|
+| Guest/Candidate public job browsing | PASS |
+| No membership and Pending denied | PASS |
+| Pending → Active matching entitlement | PASS |
+| Active exact match allowed / nonmatch denied | PASS |
+| Expired, Suspended, Cancelled denied | PASS |
+| Scheduled renewal not premature | PASS |
+| Renewal handoff uses current Active row | PASS |
+| Upgraded history denied / current upgrade allowed | PASS |
+| Legacy Active policy preserved | PASS |
+| Category ID tampering denied | PASS |
+| Multi-category one-match policy | PASS |
+| Category-less job denied | PASS |
+| Parent/child exact-match policy | PASS |
+| Deleted purchased category denied | PASS |
+| Category label rename does not change entitlement | PASS |
+| Explicit resume mapping and owned resume | PASS |
+| Unmapped resume category denied | PASS |
+| Cross-user resume form/service/REST denied | PASS |
+| Application form validation match/nonmatch | PASS |
+| Resume form validation match/nonmatch | PASS |
+| REST reads available | PASS |
+| Candidate REST writes authorized/denied correctly | PASS |
+| Unrelated REST write unchanged | PASS |
+| Employer and administrator workflows unchanged | PASS |
+| Admin category diagnostics | PASS |
+| Membership dashboard category | PASS |
+| HPOS enabled | PASS |
+| Existing pricing cards | PASS |
+| PHP syntax, every plugin PHP file | PASS |
+
+Total executed assertions: **39 PASS, 0 FAIL**.
+
+**BLOCKED:** live Cariera application submission, Apply With Resume email/application
+creation, resume create/edit handlers, Cariera REST controller interaction, and
+Cariera browser E2E because Cariera Addons is inactive and legitimate license
+activation is unavailable. **NOT TESTED:** a real mutating Cariera AJAX endpoint;
+the installed resume AJAX handler inspected is read-only. Static source inspection
+is not reported as an executed integration test.

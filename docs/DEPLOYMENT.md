@@ -345,3 +345,45 @@ Checkout quote policy:
 This policy intentionally does not define a commercial grace period for slow bank
 transfers. Until that business decision is approved, materially decayed credit is
 blocked rather than automatically repriced, charged or refunded.
+
+## 0.7.0 category entitlement deployment
+
+No schema migration is required. Entitlement is resolved from the existing ledger
+using `candidate_user_id`, `status`, `expires_at` and `category_term_id` after
+expiration reconciliation. Only the current effective Active row grants access;
+Pending, Scheduled, Expired, Suspended, Cancelled and Upgraded history do not.
+Legacy Active rows retain the existing no-invented-expiry policy.
+
+Job policy:
+
+- Taxonomy: `job_listing_category` (verified in WP Job Manager and local runtime).
+- Match: exact term ID; one match is enough when a job has multiple categories.
+- Parent/child relationships do not imply authorization.
+- Missing/deleted membership category or category-less job denies only the
+  protected action. Public browsing remains available.
+
+Resume policy:
+
+- Cariera Addons source registers `resume` and the distinct `resume_category`.
+- Configure `click2eu_resume_category_map` as job-term ID keys whose values are
+  arrays of resume-term IDs, or supply the equivalent filter.
+- Every selected resume category must be in the configured mapping.
+- Create/update/use requires Candidate ownership and an effective membership.
+- Unknown mappings fail closed; no name matching or numeric-ID equivalence occurs.
+
+Integration matrix:
+
+| Action | Verified handler/hook | Server resource | Enforcement | Local status |
+|---|---|---|---|---|
+| Public job browse | WP Job Manager query/template | `job_listing` | No category restriction | PASS |
+| Application form | `application_form_validate_fields` | Posted job ID → server post/terms | Exact job category | MOCKED; Cariera runtime BLOCKED |
+| Apply with resume | `cariera_addons_resumes_apply_with_resume` POST | Server job/resume posts | Job match, resume owner/mapping | MOCKED; Cariera runtime BLOCKED |
+| Resume create/edit | `submit_resume_form_validate_fields` | Server membership + submitted terms | Explicit mapping | MOCKED; Cariera runtime BLOCKED |
+| Resume REST write | `/wp/v2/resumes[/ID]` | Route post and server terms | Ownership + mapping | MOCKED; Cariera runtime BLOCKED |
+| Resume list AJAX | `resume_manager_get_resumes` | Read-only listing query | Unchanged | Source verified; runtime BLOCKED |
+| Admin diagnostics | Click2EU Memberships | Ledger/category terms | Read-only | PASS |
+
+The local active-plugin list does not include Cariera Addons; consequently
+`resume`, `job_application` and `resume_category` are not registered in the normal
+runtime. Activate only with a legitimate license/configuration, configure mapping,
+then execute the browser/server E2E matrix before production deployment.
