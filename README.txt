@@ -1,5 +1,21 @@
-Click2EU Membership (v0.4.1)
+Click2EU Membership (v0.5.0)
 =======================================
+
+v0.5.0 DURATION AND EXPIRATION ENGINE:
+- Trusted server-side package terms: Basic 30, Pro 90, Premium 180 and Elite
+  365 elapsed 24-hour days. Values are filterable for future administration.
+- Each new order item and ledger row snapshots its purchased duration; later
+  configuration changes do not alter an existing term.
+- Duration starts only when a validated Candidate order becomes Completed.
+- UTC activation and expiration timestamps are stored in the membership ledger.
+- Action Scheduler receives a unique expiry action when available; WP-Cron is
+  the fallback, with hourly reconciliation for delayed or missing events.
+- Entitlement checks compare the real UTC expiry, so delayed cron never extends
+  Candidate privileges.
+- Expired Candidates retain account/history access and may purchase a new plan.
+- Existing Active rows without an expiration remain legacy Active and display
+  "Expiration not configured" until a future explicit migration policy.
+- No automatic renewal, mid-term upgrade or unused-time carryover is included.
 
 v0.4.1 STABILITY PATCH:
 - Current membership selection is Active first, otherwise the newest Pending,
@@ -30,7 +46,7 @@ PHASE 2 UPDATE:
 - Suspends access after Failed, Cancelled or Refunded reversals.
 - Adds Candidate role/cart validation, protected feature checks, Cariera login
   routing and [click2eu_membership_status].
-- Durations remain display-only; automatic expiry is not implemented.
+- v0.5.0 activates and enforces the snapshotted duration for new approvals.
 
 v0.3.1 hardens one-package-per-order enforcement, revalidates active/pending
 membership state at checkout, serializes per-Candidate activation, and records
@@ -117,11 +133,12 @@ CATEGORY AND CHECKOUT (UNCHANGED FROM v0.1.0):
 - Manual gateways must be enabled via WooCommerce Payments; COD for virtual
   products requires 'Accept for virtual orders'.
 
-IMPORTANT: DISPLAY-ONLY DURATION
-  30/90/180/365 days and the approximate per-day cost are text/marketing labels.
-  They DO NOT start a membership timer, grant access, restrict user capabilities,
-  renew plans or automatically expire membership after any number of days.
-  Those membership behaviors belong in a future phase.
+MEMBERSHIP DURATION
+  30/90/180/365 days are provisional server-side terms. A new ledger record
+  snapshots its duration, but its clock starts only after verified payment and
+  the WooCommerce order transition to Completed. Expiration removes protected
+  Candidate privileges while retaining account, order and membership history.
+  No automatic renewal is performed.
 
 TEST CHECKLIST:
 [ ] Existing four product IDs still load their live prices.

@@ -1,4 +1,60 @@
-# Click2EU Membership 0.4.1
+# Click2EU Membership 0.5.0
+
+## 0.5.0 duration and expiration engine
+
+### Duration rules and UTC storage
+
+- Basic: 30 days; Pro: 90 days; Premium: 180 days; Elite: 365 days.
+- Terms are provisional and centralized in `Click2EU_Config::durations()` with
+  the `click2eu_membership_durations` filter for future administration.
+- Checkout stores `_click2eu_duration_days` on the order item and order. The
+  ledger stores its own immutable purchased snapshot.
+- A term starts only after the associated Candidate order is validated as
+  Completed. One day always means 86,400 elapsed seconds.
+- `activated_at`, `expires_at` and `expired_at` are UTC MySQL datetimes. UI
+  formatting uses the configured WordPress timezone.
+
+### Schema migration
+
+Schema version `2.0.0` adds these columns without truncating or recreating the
+table:
+
+- `duration_days smallint(5) unsigned NOT NULL DEFAULT 0`
+- `expires_at datetime NULL`
+- `expired_at datetime NULL`
+
+It also adds `KEY status_expires (status, expires_at)`. `dbDelta()` preserves
+the existing primary key, unique `order_item_id`, rows and history. The schema
+version option is updated only after all three new columns are verified.
+
+### Expiration scheduling and access
+
+Activation schedules one `click2eu_expire_membership` action keyed by membership
+ID. Action Scheduler is preferred when initialized; otherwise a single WP-Cron
+event is used. An hourly `click2eu_reconcile_memberships` WP-Cron event repairs
+delayed/missing schedules and schedules future rows without duplicates.
+
+WP-Cron can be late on low-traffic sites. Every effective entitlement lookup
+therefore compares the current UTC timestamp with `expires_at` and reconciles a
+due Active row under the per-Candidate advisory lock. At the exact expiration
+timestamp access is denied, even if no scheduled action has run.
+
+Expired Candidates keep My Account, My Profile, My Orders, Membership History,
+Join Us and public job browsing. Protected Candidate dashboard, resume,
+application, premium AJAX and premium REST writes require a still-effective
+Active membership.
+
+### Legacy and repurchase policy
+
+Existing Active rows whose `expires_at` is NULL are deliberately treated as
+legacy Active. They are not backdated or automatically expired. The dashboard
+shows **Expiration not configured**. A separate approved migration policy is
+required before assigning legacy terms.
+
+After a dated membership expires, the old row/order remains unchanged and the
+Candidate may create a new Pending purchase. The new term starts only after its
+own Completed approval. No old order is reactivated, no unused time is carried
+forward, and v0.4.1 activation-conflict markers remain manual-review blockers.
 
 ## 0.4.1 state-consistency patch
 
@@ -63,6 +119,8 @@
 - `Click2EU_Status`: `[click2eu_membership_status]` output.
 - `Click2EU_Dashboard`: My Account endpoint, full dashboard shortcode, current
   record and paginated ledger-history presentation.
+- `Click2EU_Time`: filterable UTC clock used by activation, access and tests.
+- `Click2EU_Expiration`: unique scheduling, reconciliation and locked expiry.
 
 ## Database schema
 
@@ -72,10 +130,9 @@ unique `order_item_id` key. Records retain user, order, product, package,
 category, status and timestamps. Schema version is stored in
 `click2eu_membership_db_version`.
 
-Statuses used by 0.3.1 are `pending`, `active`, `suspended` and `cancelled`.
-`expired` is reserved for later policy. No expiry calculation is implemented.
-
-Version 0.4.0 does not change this schema or status lifecycle.
+Statuses are `pending`, `active`, `expired`, `suspended` and `cancelled`.
+Only a legitimately due dated Active row transitions automatically to Expired;
+refund/cancellation audit states are never rewritten as Expired.
 
 The status component is safest on WooCommerce My Account or an accessible
 account subpage. Candidate Dashboard is protected for unpaid/pending Candidates,
@@ -140,3 +197,7 @@ orders, configuration and content.
 3. Restore a database backup only when safe relative to newer live orders.
 4. The ledger table may remain unused during code rollback; do not erase its
    audit history while diagnosing an issue.
+5. Rolling code back does not remove schema-v2 columns. Older code ignores them;
+   retain them to avoid destroying duration and expiry history.
+6. Before rollback, record any queued `click2eu_expire_membership` actions. If
+   v0.5.0 is later restored, run reconciliation so overdue rows are processed.

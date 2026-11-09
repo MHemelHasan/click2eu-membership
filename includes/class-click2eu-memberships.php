@@ -26,17 +26,25 @@ final class Click2EU_Memberships {
 			category_term_id bigint(20) unsigned NOT NULL,
 			category_label varchar(200) NOT NULL,
 			status varchar(20) NOT NULL DEFAULT 'pending',
+			duration_days smallint(5) unsigned NOT NULL DEFAULT 0,
 			activated_at datetime NULL,
+			expires_at datetime NULL,
+			expired_at datetime NULL,
 			created_at datetime NOT NULL,
 			updated_at datetime NOT NULL,
 			PRIMARY KEY  (membership_id),
 			UNIQUE KEY order_item_id (order_item_id),
 			KEY candidate_status (candidate_user_id,status),
+			KEY status_expires (status,expires_at),
 			KEY order_id (order_id)
 		) {$charset};";
 
 		dbDelta( $sql );
-		update_option( Click2EU_Config::DB_VERSION_OPTION, Click2EU_Config::DB_VERSION );
+		$required = array( 'duration_days', 'expires_at', 'expired_at' );
+		$columns  = $wpdb->get_col( 'SHOW COLUMNS FROM ' . self::table_name(), 0 );
+		if ( ! array_diff( $required, $columns ) ) {
+			update_option( Click2EU_Config::DB_VERSION_OPTION, Click2EU_Config::DB_VERSION );
+		}
 	}
 
 	public static function maybe_install() {
@@ -77,6 +85,9 @@ final class Click2EU_Memberships {
 
 	public static function get_membership_for_user( $user_id ) {
 		global $wpdb;
+		if ( class_exists( 'Click2EU_Expiration' ) ) {
+			Click2EU_Expiration::reconcile_user( $user_id );
+		}
 		return $wpdb->get_row(
 			$wpdb->prepare(
 				"SELECT * FROM " . self::table_name() . " WHERE candidate_user_id = %d ORDER BY CASE WHEN status = 'active' THEN 0 WHEN status = 'pending' THEN 1 ELSE 2 END, membership_id DESC LIMIT 1",
@@ -92,7 +103,10 @@ final class Click2EU_Memberships {
 
 	public static function has_active_membership( $user_id ) {
 		global $wpdb;
-		return (bool) $wpdb->get_var( $wpdb->prepare( 'SELECT membership_id FROM ' . self::table_name() . " WHERE candidate_user_id = %d AND status = 'active' LIMIT 1", absint( $user_id ) ) );
+		if ( class_exists( 'Click2EU_Expiration' ) ) {
+			Click2EU_Expiration::reconcile_user( $user_id );
+		}
+		return (bool) $wpdb->get_var( $wpdb->prepare( 'SELECT membership_id FROM ' . self::table_name() . " WHERE candidate_user_id = %d AND status = 'active' AND (expires_at IS NULL OR expires_at > %s) LIMIT 1", absint( $user_id ), Click2EU_Time::mysql() ) );
 	}
 
 	public static function has_pending_membership( $user_id ) {
@@ -100,14 +114,15 @@ final class Click2EU_Memberships {
 		return (bool) $wpdb->get_var( $wpdb->prepare( 'SELECT membership_id FROM ' . self::table_name() . " WHERE candidate_user_id = %d AND status = 'pending' LIMIT 1", absint( $user_id ) ) );
 	}
 
-	public static function create_pending( WC_Order $order, WC_Order_Item_Product $item, $package, $category_id, $category_label ) {
+	public static function create_pending( WC_Order $order, WC_Order_Item_Product $item, $package, $category_id, $category_label, $duration_days = 0 ) {
 		global $wpdb;
 		$existing = self::get_for_order_item( $item->get_id() );
 		if ( $existing ) {
 			return absint( $existing->membership_id );
 		}
 
-		$now = current_time( 'mysql', true );
+		$now           = Click2EU_Time::mysql();
+		$duration_days = absint( $duration_days ) ?: Click2EU_Config::duration_for_package( $package );
 		$ok  = $wpdb->insert(
 			self::table_name(),
 			array(
@@ -119,10 +134,11 @@ final class Click2EU_Memberships {
 				'category_term_id'   => absint( $category_id ),
 				'category_label'     => sanitize_text_field( $category_label ),
 				'status'             => 'pending',
+				'duration_days'      => $duration_days,
 				'created_at'         => $now,
 				'updated_at'         => $now,
 			),
-			array( '%d', '%d', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s' )
+			array( '%d', '%d', '%d', '%d', '%s', '%d', '%s', '%s', '%d', '%s', '%s' )
 		);
 
 		if ( false === $ok ) {
@@ -133,7 +149,7 @@ final class Click2EU_Memberships {
 		return absint( $wpdb->insert_id );
 	}
 
-	public static function activate_membership( $membership_id, &$conflicting_membership_id = 0 ) {
+	public static function activate_membership( $membership_id, &$conflicting_membership_id = 0, $approved_order = null ) {
 		global $wpdb;
 		$conflicting_membership_id = 0;
 		$membership = self::get_membership( $membership_id );
@@ -159,6 +175,45 @@ final class Click2EU_Memberships {
 				return true;
 			}
 
+			$order = $approved_order instanceof WC_Order ? $approved_order : wc_get_order( absint( $membership->order_id ) );
+			$item  = $order ? $order->get_item( absint( $membership->order_item_id ) ) : false;
+			if (
+				! $order || 'completed' !== $order->get_status() ||
+				(int) $order->get_id() !== (int) $membership->order_id ||
+				(int) $order->get_user_id() !== (int) $membership->candidate_user_id ||
+				! $item instanceof WC_Order_Item_Product ||
+				(int) $item->get_product_id() !== (int) $membership->product_id ||
+				! Click2EU_Config::is_membership_product( $membership->product_id ) ||
+				! term_exists( absint( $membership->category_term_id ), 'job_listing_category' ) ||
+				absint( $item->get_meta( '_click2eu_category_id', true ) ) !== absint( $membership->category_term_id )
+			) {
+				return false;
+			}
+
+			// Reconcile overdue active rows while holding the same Candidate lock.
+			$now_mysql = Click2EU_Time::mysql();
+			$due_ids   = $wpdb->get_col(
+				$wpdb->prepare(
+					'SELECT membership_id FROM ' . self::table_name() . " WHERE candidate_user_id = %d AND status = 'active' AND expires_at IS NOT NULL AND expires_at <= %s",
+					absint( $membership->candidate_user_id ),
+					$now_mysql
+				)
+			);
+			if ( $due_ids ) {
+				$wpdb->query(
+					$wpdb->prepare(
+						'UPDATE ' . self::table_name() . " SET status = 'expired', expired_at = %s, updated_at = %s WHERE candidate_user_id = %d AND status = 'active' AND expires_at IS NOT NULL AND expires_at <= %s",
+						$now_mysql,
+						$now_mysql,
+						absint( $membership->candidate_user_id ),
+						$now_mysql
+					)
+				);
+				foreach ( $due_ids as $due_id ) {
+					Click2EU_Expiration::unschedule( $due_id );
+				}
+			}
+
 			$conflicting_membership_id = absint(
 				$wpdb->get_var(
 					$wpdb->prepare(
@@ -172,14 +227,32 @@ final class Click2EU_Memberships {
 				return false;
 			}
 
-			$now = current_time( 'mysql', true );
-			return false !== $wpdb->update(
-				self::table_name(),
-				array( 'status' => 'active', 'activated_at' => $now, 'updated_at' => $now ),
-				array( 'membership_id' => absint( $membership_id ) ),
-				array( '%s', '%s', '%s' ),
-				array( '%d' )
+			$duration_days = absint( $membership->duration_days );
+			if ( ! $duration_days ) {
+				$duration_days = absint( $item->get_meta( '_click2eu_duration_days', true ) ) ?: Click2EU_Config::duration_for_package( $membership->package_key );
+			}
+			if ( ! $duration_days ) {
+				return false;
+			}
+
+			$activated_timestamp = Click2EU_Time::now();
+			$activated_at        = Click2EU_Time::mysql( $activated_timestamp );
+			$expires_at          = Click2EU_Time::mysql( $activated_timestamp + ( $duration_days * DAY_IN_SECONDS ) );
+			$updated = $wpdb->query(
+				$wpdb->prepare(
+					'UPDATE ' . self::table_name() . " SET status = 'active', duration_days = %d, activated_at = %s, expires_at = %s, expired_at = NULL, updated_at = %s WHERE membership_id = %d AND status = 'pending'",
+					$duration_days,
+					$activated_at,
+					$expires_at,
+					$activated_at,
+					absint( $membership_id )
+				)
 			);
+			if ( 1 === $updated ) {
+				Click2EU_Expiration::schedule( $membership_id, $expires_at );
+				return true;
+			}
+			return false;
 		} finally {
 			$wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $lock_name ) );
 		}
@@ -187,13 +260,38 @@ final class Click2EU_Memberships {
 
 	public static function suspend_order( $order_id ) {
 		global $wpdb;
-		return false !== $wpdb->query(
-			$wpdb->prepare(
-				'UPDATE ' . self::table_name() . " SET status = CASE WHEN status = 'active' THEN 'suspended' ELSE 'cancelled' END, updated_at = %s WHERE order_id = %d AND status IN ('active','pending')",
-				current_time( 'mysql', true ),
-				absint( $order_id )
-			)
-		);
+		$memberships = $wpdb->get_results( $wpdb->prepare( 'SELECT membership_id, candidate_user_id FROM ' . self::table_name() . ' WHERE order_id = %d', absint( $order_id ) ) );
+		$result      = true;
+
+		foreach ( $memberships as $membership_ref ) {
+			$lock_name = 'click2eu_membership_user_' . absint( $membership_ref->candidate_user_id );
+			$locked    = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s, 10)', $lock_name ) );
+			if ( 1 !== $locked ) {
+				$result = false;
+				continue;
+			}
+
+			try {
+				$membership = self::get_membership( $membership_ref->membership_id );
+				if ( ! $membership || ! in_array( $membership->status, array( 'active', 'pending', 'expired' ), true ) ) {
+					continue;
+				}
+				$new_status = 'pending' === $membership->status ? 'cancelled' : 'suspended';
+				$updated    = $wpdb->update(
+					self::table_name(),
+					array( 'status' => $new_status, 'updated_at' => Click2EU_Time::mysql() ),
+					array( 'membership_id' => absint( $membership->membership_id ) ),
+					array( '%s', '%s' ),
+					array( '%d' )
+				);
+				$result = false !== $updated && $result;
+				Click2EU_Expiration::unschedule( $membership->membership_id );
+			} finally {
+				$wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $lock_name ) );
+			}
+		}
+
+		return $result;
 	}
 
 	public static function get_membership_status( $user_id ) {
