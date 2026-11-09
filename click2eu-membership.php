@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Click2EU Membership
  * Description: Candidate membership packages, manual-payment activation, access control and WooCommerce integration for Click2EU.
- * Version: 0.6.2
+ * Version: 0.6.3
  * Requires Plugins: woocommerce
  * Requires PHP: 7.4
  * Author: HemelHasan
@@ -31,6 +31,7 @@ register_activation_hook( __FILE__, array( 'Click2EU_Memberships', 'install' ) )
 register_activation_hook( __FILE__, array( 'Click2EU_Dashboard', 'activate' ) );
 register_activation_hook( __FILE__, array( 'Click2EU_Expiration', 'activate' ) );
 register_deactivation_hook( __FILE__, array( 'Click2EU_Expiration', 'deactivate' ) );
+register_deactivation_hook( __FILE__, array( 'Click2EU_Upgrades', 'deactivate' ) );
 
 /**
  * Uses WooCommerce CRUD for order and order-item metadata (HPOS-friendly).
@@ -43,7 +44,7 @@ add_action( 'before_woocommerce_init', function () {
 } );
 
 final class Click2EU_Membership_Phase_One {
-    private const VERSION = '0.6.2';
+    private const VERSION = '0.6.3';
 
     /** Phase 1: existing, separately-created WooCommerce simple products. */
     private const PRODUCTS = array(

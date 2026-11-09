@@ -316,3 +316,32 @@ Approve zero-total Click2EU upgrade**. The user must have `manage_woocommerce`.
 The action is recorded with UTC time and administrator ID. Completed status by
 itself is insufficient. Positive BACS/manual-payment orders continue to activate
 only through the existing Completed workflow.
+## 0.6.3 recovery scheduling and quote validity
+
+No database schema migration is required. Recovery state is stored in the
+`click2eu_upgrade_recovery_cursor` option. Action Scheduler is preferred; a
+five-minute WP-Cron recurrence is the fallback. Each invocation processes at most
+25 Active upgrade rows ordered after the cursor and persists progress after every
+row. At the end of a sweep the cursor resets to zero for eventual rechecking.
+Plugin deactivation removes both recovery schedules.
+
+Checkout quote policy:
+
+- Default validity: 15 minutes, configurable with the
+  `click2eu_upgrade_quote_ttl` filter.
+- `quoted_at` and `quote_expires_at` are frozen in cart, line and order metadata.
+- Checkout rejects expired quotes, expired/changed source memberships, changed
+  source payment/refund basis, changed target price, currency or category.
+- Classic Checkout uses checkout-validation errors. Shared WooCommerce cart
+  validation covers Checkout Blocks; order creation also records a stale/review
+  marker as a defensive fallback.
+- A placed order is never repriced. Approval compares its frozen credit to the
+  currently justified credit. A difference greater than the default €0.01
+  tolerance fails closed for administrator review.
+- The tolerance is configurable with
+  `click2eu_upgrade_approval_credit_tolerance`; changing it is a financial-policy
+  decision and must be separately approved and tested.
+
+This policy intentionally does not define a commercial grace period for slow bank
+transfers. Until that business decision is approved, materially decayed credit is
+blocked rather than automatically repriced, charged or refunded.

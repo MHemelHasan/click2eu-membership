@@ -306,3 +306,39 @@ metadata hooks, and no direct WooCommerce order-table SQL.
 gateway callbacks, or genuine simultaneous multi-process load. **BLOCKED:** Cariera
 browser E2E until legitimate local license activation. No production operations
 were performed.
+## 0.6.3 executed recovery and quote-safety regression
+
+The suite used injected UTC time, temporary `example.invalid` users, HPOS orders,
+isolated ledger rows, controlled schedule failure, a target-price filter and more
+than 200 recovery candidates. All fixtures, actions, orders, users, rows and the
+test cursor were removed or reset after execution.
+
+| Scenario | Result |
+|---|---|
+| Fresh quote | PASS |
+| Checkout after 15-minute quote expiry | PASS |
+| Source expires during checkout | PASS |
+| Target price changes after quote | PASS |
+| 50 finalized rows followed by 51st incomplete row | PASS |
+| 51st row eventually recovered | PASS |
+| Persistent cursor advances across batches | PASS |
+| More than 200 eligible recovery rows | PASS |
+| Interrupted schedule finalization recovery | PASS |
+| Repeated reconciliation/idempotency | PASS |
+| Missing-order recovery rows do not block progress | PASS |
+| Long-delayed approval fails closed after material credit decay | PASS |
+| Placed order total remains unchanged | PASS |
+| Expired cart quote blocks checkout | PASS |
+| Existing finalized order remains unchanged | PASS |
+| Zero-total Completed remains blocked | PASS |
+| Explicit zero-total administrator approval | PASS |
+| Duplicate approval | PASS |
+| Partial-refund lineage | PASS |
+| Normal renewal | PASS |
+| HPOS CRUD and scheduled hook registration | PASS |
+| PHP syntax for every plugin PHP file | PASS |
+
+**NOT TESTED:** genuine simultaneous refund/activation processes, browser-driven
+Classic Checkout, browser-driven Checkout Blocks, real BACS timing, or production
+Action Scheduler load. **BLOCKED:** Cariera browser E2E pending legitimate local
+license activation. Static review is not counted as an executed browser test.

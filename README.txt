@@ -207,3 +207,24 @@ requiring another order-status transition. Recovery revalidates the source payme
 Zero-total upgrades require the WooCommerce order action "Approve zero-total
 Click2EU upgrade" from an administrator with WooCommerce management capability.
 Completed status alone never activates a zero-total upgrade.
+Click2EU Membership 0.6.3
+=========================
+
+Version 0.6.3 prevents recovery starvation and stale unused-time credits. Upgrade
+recovery no longer scans the first 50 rows on every frontend request. Action
+Scheduler runs a 25-row batch every five minutes (WP-Cron fallback), saving a
+persistent membership-ID cursor after each row. Completed history cannot starve a
+later interrupted upgrade, and a process interruption safely repeats at most the
+current idempotent row.
+
+Upgrade quotes are valid for 15 minutes by default. The duration is configurable
+with `click2eu_upgrade_quote_ttl`. Classic and Block cart validation reject an
+expired or changed quote; order metadata retains an additional fail-closed review
+marker if order creation bypasses normal validation. Placed orders are never
+silently repriced.
+
+At manual approval the source payment, expiry, target price, placement-time quote
+validity and current unused-time credit are revalidated. If the frozen credit is
+more favorable by over one currency cent (configurable through
+`click2eu_upgrade_approval_credit_tolerance`), activation is blocked for review.
+No extra charge or automatic refund is created.
