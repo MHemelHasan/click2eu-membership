@@ -105,6 +105,31 @@ final class Click2EU_Settings {
 			}
 			$clean['pages'][ $key ] = $page_id;
 		}
+		$join_id = absint( $clean['pages']['join'] ?? 0 );
+		$commerce_ids = array_filter( array(
+			absint( $clean['pages']['my_account'] ?? 0 ),
+			absint( get_option( 'woocommerce_cart_page_id' ) ),
+			absint( get_option( 'woocommerce_checkout_page_id' ) ),
+		) );
+		$join_conflicts = array_merge( $commerce_ids, array_filter( array(
+			absint( $clean['pages']['submit_resume'] ?? 0 ),
+			absint( $clean['pages']['job_search'] ?? 0 ),
+			absint( $clean['pages']['company_listings'] ?? 0 ),
+		) ) );
+		if ( $join_id && in_array( $join_id, $join_conflicts, true ) ) {
+			add_settings_error( self::OPTION, 'join_route_conflict', __( 'Join Us cannot also be My Account, Cart, Checkout, Submit Resume, Job Search or Company Listings.', 'click2eu-membership' ) );
+			$clean['pages']['join'] = 0;
+		}
+		foreach ( array( 'submit_resume', 'job_search', 'company_listings' ) as $protected_key ) {
+			if ( ! empty( $clean['pages'][ $protected_key ] ) && in_array( absint( $clean['pages'][ $protected_key ] ), $commerce_ids, true ) ) {
+				add_settings_error( self::OPTION, 'commerce_route_conflict_' . $protected_key, sprintf( __( '%s cannot reuse My Account, Cart or Checkout.', 'click2eu-membership' ), self::page_definitions()[ $protected_key ]['label'] ) );
+				$clean['pages'][ $protected_key ] = 0;
+			}
+		}
+		if ( ! empty( $clean['pages']['submit_resume'] ) && in_array( absint( $clean['pages']['submit_resume'] ), array( absint( $clean['pages']['candidate_dashboard'] ?? 0 ), absint( $clean['pages']['my_resumes'] ?? 0 ) ), true ) ) {
+			add_settings_error( self::OPTION, 'resume_route_conflict', __( 'Submit Resume must be distinct from the read-only Candidate Dashboard / My Resumes page.', 'click2eu-membership' ) );
+			$clean['pages']['submit_resume'] = 0;
+		}
 		return $clean;
 	}
 

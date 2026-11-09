@@ -5,6 +5,13 @@
 | Area / scenario | Status | Evidence source |
 |---|---|---|
 | Page Mapping, fixed policy and diagnostics | PASS | WordPress runtime assertions and source review |
+| v0.7.3 Pending Join -> Orders diagnosis | PASS | Real Chrome CDP chain reproduced |
+| Feature Pending allowed-page navigation | PASS | Real Chrome CDP; direct 200 |
+| Candidate login: Pending Join / Active Dashboard | PASS | Real Chrome normal login plus integration |
+| Cart/Checkout/Order Received redirect exclusion | PASS | Focused integration and real Chrome |
+| Classic Checkout: Cheque and BACS | PASS | Real Chrome, payment instructions and HPOS readback |
+| On-hold order -> Pending ledger | PASS | WooCommerce CRUD/database readback |
+| Completed -> Active -> Refunded/Suspended | PASS | Isolated HPOS lifecycle readback |
 | Guest protected HTML -> Join | PASS | Real local HTTP 302 and final 200 |
 | Unpaid/Pending paid access denied | PASS | Runtime assertions and HTTP 302/403 |
 | Unpaid Dashboard/Profile/Orders/My Membership | PASS | Authenticated local HTTP 200 |
@@ -17,16 +24,17 @@
 | Resume ownership/category/active visibility | PASS (integration) | Isolated WordPress assertions |
 | REST collection/single/write policy | PASS (integration) | `WP_REST_Request` dispatch-policy assertions |
 | PHP 8.2 and 8.4 syntax | PASS | CLI lint |
-| Real Chrome rendered UI/console/network | BLOCKED | Browser control adapter failure |
+| Real Chrome rendered UI/console/network | PASS (local routing/checkout) | Chrome 156 CDP 1.3 |
 | Cariera Candidate AJAX login | BLOCKED | Cariera Core inactive locally |
 | Cariera resume create/edit/moderation | BLOCKED | Cariera Addons inactive locally |
 | Cariera application/CV/Apply With Resume persistence | BLOCKED | Cariera Addons inactive locally |
 | Cariera company UI and Employer job workflow | BLOCKED | Vendor runtime inactive locally |
 | Cariera Direct Message runtime handlers | BLOCKED | Vendor runtime inactive locally |
-| Production configuration/live diagnostics | NOT ACCESSED | No live authority or mutation performed |
+| Authenticated live Pending redirect chain | BLOCKED | Disposable browser stopped at live password protection; no live credentials used |
 
-The Phase-1 isolated suite completed **35 PASS, 0 FAIL**. Blocked vendor/browser
-rows are not counted as passes, and the candidate therefore remains NO-GO.
+The original Phase-1 isolated suite completed **35 PASS, 0 FAIL**. The focused
+routing suite added **8 PASS, 0 FAIL**. Blocked vendor rows are not counted as
+passes, and the candidate therefore remains NO-GO.
 
 | Area / scenario | Status | Evidence source |
 |---|---|---|

@@ -2,10 +2,33 @@
 
 ## v0.7.4 Phase-1 launch decision: NO-GO
 
-The access-control implementation passed source, isolated WordPress and real
-local HTTP checks, but critical real-browser and real Cariera-handler evidence
-is unavailable. The plugin remains version 0.7.3 on the feature branch. No
-v0.7.4 ZIP or `develop` merge is authorized by the current evidence.
+The access-control implementation passed source, isolated WordPress, local HTTP
+and real Chrome routing/Classic Checkout checks. Critical real Cariera-handler
+evidence remains unavailable. The plugin remains version 0.7.3 on the feature
+branch. No v0.7.4 ZIP or `develop` merge is authorized by the current evidence.
+
+Authenticated live diagnosis is also blocked. A disposable Chrome profile could
+reach the public host only through its password-protection redirect, and no live
+password, Candidate cookie, order key or account credential was copied or used.
+The reported live `ERR_TOO_MANY_REDIRECTS` return leg therefore remains unknown.
+The proven v0.7.3 contribution was Pending Join-to-Orders plus Dashboard-to-Join,
+which produced Dashboard-to-Join-to-Orders locally but terminated at Orders.
+
+### Executable authenticated live verification
+
+1. Use a new isolated Candidate and one Basic Cheque/BACS order; do not use an
+   imported customer or existing commercial order.
+2. In Chrome DevTools Network, enable **Preserve log** and **Disable cache**.
+3. Visit Homepage, Join, Candidate Dashboard, My Profile, My Orders, My
+   Membership, Checkout and the new Order Received URL independently.
+4. For every 3xx response record Request URL, status, redacted `Location` and
+   `X-Redirect-By`. Stop at the first URL repeated in the chain.
+5. Export a sanitized HAR after removing cookies, authorization headers, order
+   keys, nonces, emails and personal fields.
+6. Read back the isolated order with WooCommerce CRUD/WP-CLI and confirm payment
+   method, `on-hold` status and exactly one Pending membership row.
+7. Repeat only after deploying the candidate to staging with legitimately active
+   Cariera Core/Addons; never perform this acceptance directly on production.
 
 ### Required owner-run read-only diagnostics
 

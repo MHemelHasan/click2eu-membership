@@ -8,6 +8,18 @@ table. The only new persisted value is the namespaced
 `click2eu_phase1_settings` WordPress option after an administrator saves the
 Settings page.
 
+Candidate AJAX login forces Cariera's effective Candidate redirect mode to
+`custom_page` at read time and supplies Join Us as the guest-localized landing.
+Pending/unpaid Candidates remain on Join Us; an Active Candidate is then routed
+server-side to Candidate Dashboard. The stored Cariera option is not rewritten.
+Normal WordPress login preserves only same-site Cart/Checkout continuations, so
+checkout authentication and Order Received are not intercepted.
+
+Cart, Checkout, Order Pay, Order Received and My Account endpoints bypass
+membership HTML redirects. Settings rejects Join mappings that collide with My
+Account, Cart, Checkout, Submit Resume, Job Search or Company Listings, and
+runtime self-redirects fail closed.
+
 Do not copy LocalWP page IDs to staging or production. In each environment open
 **WP Admin > Click2EU Memberships > Settings**, map every published page, save,
 then re-open the page and verify every diagnostic URL. Missing mappings fail

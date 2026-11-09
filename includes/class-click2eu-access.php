@@ -41,9 +41,12 @@ final class Click2EU_Access {
 		if ( is_admin() || wp_doing_ajax() || wp_doing_cron() || self::is_system_request() ) {
 			return;
 		}
+		if ( Click2EU_Route_Policy::is_commerce_request() ) {
+			return;
+		}
 		if ( is_page( Click2EU_Settings::page_id( 'join' ) ) && Click2EU_Auth::is_candidate() && Click2EU_Route_Policy::can_access_paid_candidate_features() && empty( $_GET['renew_membership'] ) && empty( $_GET['view_plans'] ) ) {
 			$dashboard = Click2EU_Settings::page_url( 'candidate_dashboard' );
-			if ( $dashboard ) {
+			if ( $dashboard && ! self::is_current_url( $dashboard ) ) {
 				wp_safe_redirect( $dashboard, 302, 'Click2EU Membership' );
 				exit;
 			}
@@ -70,13 +73,24 @@ final class Click2EU_Access {
 
 	private function redirect_to_join( $error ) {
 		if ( is_page( Click2EU_Settings::page_id( 'join' ) ) ) {
-			return;
+			// A Join mapping that also resolves as protected must fail closed rather
+			// than expose data or redirect back to itself forever.
+			$this->die_denial( $error );
 		}
 		$join = Click2EU_Settings::page_url( 'join' );
 		$join = $join ?: home_url( '/join-us/' );
+		if ( self::is_current_url( $join ) ) {
+			$this->die_denial( $error );
+		}
 		$reason = is_wp_error( $error ) && 'click2eu_job_category_denied' === $error->get_error_code() ? 'category' : 'required';
 		wp_safe_redirect( add_query_arg( 'membership', $reason, $join ), 302, 'Click2EU Membership' );
 		exit;
+	}
+
+	private static function is_current_url( $target ) {
+		$current_path = trailingslashit( (string) wp_parse_url( home_url( wp_unslash( $_SERVER['REQUEST_URI'] ?? '/' ) ), PHP_URL_PATH ) );
+		$target_path  = trailingslashit( (string) wp_parse_url( $target, PHP_URL_PATH ) );
+		return $current_path && $target_path && $current_path === $target_path;
 	}
 
 	public function guard_listing_ajax() {

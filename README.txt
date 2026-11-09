@@ -13,6 +13,9 @@ v0.7.4 PHASE-1 ACCESS CONTROL CANDIDATE (NOT RELEASED):
   owned company profile.
 - Unpaid Candidates retain Dashboard, Profile, My Account, Orders, My
   Membership and a read-only My Resumes list.
+- Removes the v0.7.3 Pending Join-to-Orders routing, preserves Cart/Checkout and
+  Order Received continuations, and routes Cariera AJAX Candidate login through
+  the membership-aware Join/Dashboard decision without changing vendor code.
 - This candidate remains version 0.7.3 and is not release-ready until legitimate
   Cariera Core/Addons runtime browser E2E is completed. Do not deploy it as
   v0.7.4 from the feature branch.

@@ -68,6 +68,34 @@ final class Click2EU_Route_Policy {
 		return is_page( $allowed );
 	}
 
+	/** Keep WooCommerce purchase, payment and account endpoints outside membership redirects. */
+	public static function is_commerce_request() {
+		return ( function_exists( 'is_cart' ) && is_cart() )
+			|| ( function_exists( 'is_checkout' ) && is_checkout() )
+			|| ( function_exists( 'is_account_page' ) && is_account_page() );
+	}
+
+	/** Allow a login continuation only when it stays on this site and returns to Cart/Checkout. */
+	public static function is_purchase_url( $url ) {
+		$url = wp_validate_redirect( (string) $url, false );
+		if ( ! $url || ! function_exists( 'wc_get_cart_url' ) || ! function_exists( 'wc_get_checkout_url' ) ) {
+			return false;
+		}
+		$site_host = wp_parse_url( home_url( '/' ), PHP_URL_HOST );
+		$url_host  = wp_parse_url( $url, PHP_URL_HOST );
+		if ( $url_host && strtolower( $url_host ) !== strtolower( (string) $site_host ) ) {
+			return false;
+		}
+		$path = trailingslashit( (string) wp_parse_url( $url, PHP_URL_PATH ) );
+		foreach ( array( wc_get_cart_url(), wc_get_checkout_url() ) as $allowed ) {
+			$allowed_path = trailingslashit( (string) wp_parse_url( $allowed, PHP_URL_PATH ) );
+			if ( $allowed_path && 0 === strpos( $path, $allowed_path ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	public static function is_protected_html_route() {
 		if ( is_singular( self::protected_post_types() ) || is_post_type_archive( self::protected_post_types() ) || is_tax( self::protected_taxonomies() ) ) {
 			return true;
