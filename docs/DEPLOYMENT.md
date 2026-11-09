@@ -506,3 +506,16 @@ retention cleanup. Operational resolution must consider provider logs before any
 manual communication, because the original message may already have been accepted.
 The uncertainty explanation is stored in `review_note`; the preceding
 `last_error`, attempt count and last-attempt timestamp remain unchanged.
+
+## 0.7.3 dashboard form preservation
+
+Version 0.7.3 is a frontend rendering fix only. `Click2EU_Dashboard::account_content()`
+continues to sanitize rendered dashboard HTML, but explicitly permits the limited
+`form`, `input` and `button` attributes required by the existing nonce-protected
+renewal and upgrade actions. No schema migration is required.
+
+Before deployment, confirm the My Membership endpoint contains working renewal
+and eligible-upgrade forms, then complete one manual-payment upgrade in staging.
+Rollback to 0.7.2 does not alter stored data, but it again removes these controls
+from the rendered My Account endpoint. Cariera-dependent browser validation remains
+blocked until the vendor integration can be legitimately activated.
