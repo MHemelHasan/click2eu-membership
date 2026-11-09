@@ -1,5 +1,14 @@
-Click2EU Membership (v0.7.2)
+Click2EU Membership (v0.7.3)
 =======================================
+
+v0.7.3 DASHBOARD FORM PRESERVATION:
+- Preserves the nonce-protected renewal and upgrade forms when rendering the
+  WooCommerce My Account membership endpoint.
+- Uses a narrow HTML allowlist for form, input and button attributes; rendered
+  membership content remains sanitized.
+- No schema, pricing, entitlement, payment or notification behavior changes.
+- Confirmed through real Chrome checkout and administrator approval flows for
+  Basic to Pro, Basic to Premium and Pro to Elite upgrades.
 
 v0.7.2 NOTIFICATION RELIABILITY HARDENING:
 - Separates immutable notification event due time from mutable retry execution

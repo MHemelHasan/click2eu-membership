@@ -61,7 +61,26 @@ final class Click2EU_Dashboard {
 	}
 
 	public function account_content() {
-		echo wp_kses_post( $this->render_for_current_user() );
+		$allowed_html = wp_kses_allowed_html( 'post' );
+		$allowed_html['form'] = array(
+			'action' => true,
+			'class'  => true,
+			'method' => true,
+		);
+		$allowed_html['input'] = array(
+			'class' => true,
+			'id'    => true,
+			'name'  => true,
+			'type'  => true,
+			'value' => true,
+		);
+		$allowed_html['button'] = array(
+			'class' => true,
+			'name'  => true,
+			'type'  => true,
+			'value' => true,
+		);
+		echo wp_kses( $this->render_for_current_user(), $allowed_html );
 	}
 
 	public function shortcode() {
