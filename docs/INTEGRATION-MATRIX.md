@@ -1,5 +1,33 @@
 # v0.8.0-A Integration Matrix
 
+## v0.7.4 Phase-1 candidate matrix
+
+| Area / scenario | Status | Evidence source |
+|---|---|---|
+| Page Mapping, fixed policy and diagnostics | PASS | WordPress runtime assertions and source review |
+| Guest protected HTML -> Join | PASS | Real local HTTP 302 and final 200 |
+| Unpaid/Pending paid access denied | PASS | Runtime assertions and HTTP 302/403 |
+| Unpaid Dashboard/Profile/Orders/My Membership | PASS | Authenticated local HTTP 200 |
+| Active exact-category job detail/listing | PASS | Authenticated HTTP and WPJM AJAX response |
+| Active nonmatching category denied | PASS | Authenticated HTTP 302 to category notice |
+| Guest/unpaid listing AJAX | PASS | Structured 401/403 JSON |
+| Direct application/resume/message POST denial | PASS | Real local HTTP 401/403 before handler mutation |
+| Search/feed/sitemap disclosure | PASS | No fixture data; protected sitemap 404 |
+| Employer company approval policy | PASS (integration) | Isolated posts and server validation |
+| Resume ownership/category/active visibility | PASS (integration) | Isolated WordPress assertions |
+| REST collection/single/write policy | PASS (integration) | `WP_REST_Request` dispatch-policy assertions |
+| PHP 8.2 and 8.4 syntax | PASS | CLI lint |
+| Real Chrome rendered UI/console/network | BLOCKED | Browser control adapter failure |
+| Cariera Candidate AJAX login | BLOCKED | Cariera Core inactive locally |
+| Cariera resume create/edit/moderation | BLOCKED | Cariera Addons inactive locally |
+| Cariera application/CV/Apply With Resume persistence | BLOCKED | Cariera Addons inactive locally |
+| Cariera company UI and Employer job workflow | BLOCKED | Vendor runtime inactive locally |
+| Cariera Direct Message runtime handlers | BLOCKED | Vendor runtime inactive locally |
+| Production configuration/live diagnostics | NOT ACCESSED | No live authority or mutation performed |
+
+The Phase-1 isolated suite completed **35 PASS, 0 FAIL**. Blocked vendor/browser
+rows are not counted as passes, and the candidate therefore remains NO-GO.
+
 | Area / scenario | Status | Evidence source |
 |---|---|---|
 | Plugin active; schemas 3.0.0 / 1.1.0 | PASS | WP-CLI and database readback |

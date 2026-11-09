@@ -26,10 +26,19 @@ final class Click2EU_Admin {
 	}
 
 	public function enqueue_assets( $hook ) {
-		if ( 'toplevel_page_' . self::PAGE_SLUG !== $hook ) {
+		$allowed_hooks = array(
+			'toplevel_page_' . self::PAGE_SLUG,
+			self::PAGE_SLUG . '_page_' . Click2EU_Settings::PAGE_SLUG,
+		);
+		if ( ! in_array( $hook, $allowed_hooks, true ) ) {
 			return;
 		}
 		wp_enqueue_style( 'click2eu-membership-admin', plugin_dir_url( dirname( __DIR__ ) . '/click2eu-membership.php' ) . 'assets/admin-memberships.css', array(), Click2EU_Config::VERSION );
+		if ( self::PAGE_SLUG . '_page_' . Click2EU_Settings::PAGE_SLUG === $hook && wp_script_is( 'wc-enhanced-select', 'registered' ) ) {
+			wp_enqueue_style( 'woocommerce_admin_styles' );
+			wp_enqueue_script( 'wc-enhanced-select' );
+			wp_add_inline_script( 'wc-enhanced-select', 'jQuery(function($){$(".c2eu-page-select").selectWoo({width:"resolve"});});' );
+		}
 	}
 
 	public function render_page() {

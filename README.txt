@@ -1,6 +1,22 @@
 Click2EU Membership (v0.7.3)
 =======================================
 
+v0.7.4 PHASE-1 ACCESS CONTROL CANDIDATE (NOT RELEASED):
+- Adds a centralized actor/route policy covering protected job, company and
+  resume HTML routes, AJAX, REST, search, feeds and sitemaps.
+- Adds WP Admin > Click2EU Memberships > Settings for environment-specific Page
+  Mapping, fixed Phase-1 policy controls and non-sensitive diagnostics.
+- Guests and unpaid/Pending Candidates are redirected from protected HTML to
+  Join Us; non-HTML requests receive structured 401/403 responses.
+- Active Candidates receive exact purchased-category job access. Employers do
+  not require Candidate membership, but job submission requires a published,
+  owned company profile.
+- Unpaid Candidates retain Dashboard, Profile, My Account, Orders, My
+  Membership and a read-only My Resumes list.
+- This candidate remains version 0.7.3 and is not release-ready until legitimate
+  Cariera Core/Addons runtime browser E2E is completed. Do not deploy it as
+  v0.7.4 from the feature branch.
+
 v0.7.3 DASHBOARD FORM PRESERVATION:
 - Preserves the nonce-protected renewal and upgrade forms when rendering the
   WooCommerce My Account membership endpoint.

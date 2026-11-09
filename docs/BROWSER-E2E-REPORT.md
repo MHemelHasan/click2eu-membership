@@ -1,5 +1,30 @@
 # v0.8.0-A Independent Browser E2E Report
 
+## v0.7.4 Phase-1 access-control addendum (2026-11-10)
+
+This addendum records current feature-branch evidence; the historical v0.8.0-A
+report below remains unchanged.
+
+- Browser control: **BLOCKED**. The Chrome extension exposed the local tabs but
+  its tab create/attach adapter failed with an internal `timeoutMs` error after
+  reset and retry. No HTTP result is presented as a browser result.
+- Local Cariera runtime: **BLOCKED**. Cariera Core 2.0.2 and Addons 1.1.1 are
+  installed but inactive, so vendor UI, console, network and persistence E2E
+  cannot be honestly completed.
+- WordPress integration: **PASS, 35 assertions / 0 failures** using isolated
+  example.invalid users, membership rows, jobs, companies, resume and terms.
+- Real local HTTP: **PASS** for guest/unpaid redirects, allowed account routes,
+  exact-category Active job detail, nonmatching denial, listing AJAX 401/403,
+  application/resume/message POST denial, feed/search non-disclosure, sitemap
+  suppression and private/no-store response headers.
+- A real HTTP defect was found and fixed: singular protected queries were being
+  emptied in `pre_get_posts`, causing 404 before the intended Join/category
+  redirect. Singular main queries now resolve for `template_redirect`; list and
+  archive queries remain server-filtered.
+
+Because real browser and active vendor-handler tests are blocked, v0.7.4 was not
+version-bumped, packaged, merged into `develop`, or declared launch-ready.
+
 ## Scope and environment
 
 - Site: `http://click2eu.local/` (LocalWP only)

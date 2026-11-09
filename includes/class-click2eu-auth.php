@@ -17,7 +17,8 @@ final class Click2EU_Auth {
 
 	public static function cariera_auth_url() {
 		$layout = get_option( 'cariera_login_register_layout' );
-		$page   = absint( apply_filters( 'cariera_login_register_page', get_option( 'cariera_login_register_page' ) ) );
+		$mapped = class_exists( 'Click2EU_Settings' ) ? Click2EU_Settings::page_id( 'login' ) : 0;
+		$page   = absint( apply_filters( 'cariera_login_register_page', $mapped ?: get_option( 'cariera_login_register_page' ) ) );
 
 		if ( 'popup' !== $layout && $page ) {
 			return get_permalink( $page );

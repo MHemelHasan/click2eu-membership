@@ -22,6 +22,8 @@ require_once __DIR__ . '/includes/class-click2eu-expiration.php';
 require_once __DIR__ . '/includes/class-click2eu-orders.php';
 require_once __DIR__ . '/includes/class-click2eu-upgrades.php';
 require_once __DIR__ . '/includes/class-click2eu-category-access.php';
+require_once __DIR__ . '/includes/class-click2eu-settings.php';
+require_once __DIR__ . '/includes/class-click2eu-route-policy.php';
 require_once __DIR__ . '/includes/class-click2eu-notification-templates.php';
 require_once __DIR__ . '/includes/class-click2eu-notifications.php';
 require_once __DIR__ . '/includes/class-click2eu-access.php';
@@ -205,6 +207,7 @@ final class Click2EU_Membership_Phase_One {
         $id = sanitize_html_class( $atts['id'] );
         $html = '<section' . ( $id ? ' id="' . esc_attr( $id ) . '"' : '' ) . ' class="c2eu-membership c2eu-plans-section">';
         $html .= '<div class="c2eu-plans-container">';
+		$html .= $this->access_notice();
         $html .= '<header class="c2eu-plans-header">';
         if ( '' !== trim( $atts['eyebrow'] ) ) {
             $html .= '<p class="c2eu-plans-eyebrow">' . esc_html( $atts['eyebrow'] ) . '</p>';
@@ -223,6 +226,17 @@ final class Click2EU_Membership_Phase_One {
         $html .= '</div></section>';
         return $html;
     }
+
+	private function access_notice() {
+		$reason = isset( $_GET['membership'] ) ? sanitize_key( wp_unslash( $_GET['membership'] ) ) : '';
+		if ( 'required' === $reason ) {
+			return '<div class="c2eu-notice" role="status"><strong>' . esc_html__( 'Membership Required', 'click2eu-membership' ) . '</strong><br>' . esc_html__( 'Choose a plan or sign in. Pending payments do not unlock protected Candidate features.', 'click2eu-membership' ) . '</div>';
+		}
+		if ( 'category' === $reason ) {
+			return '<div class="c2eu-notice" role="status"><strong>' . esc_html__( 'Category Restricted', 'click2eu-membership' ) . '</strong><br>' . esc_html__( 'That job is outside the category covered by your membership.', 'click2eu-membership' ) . '</div>';
+		}
+		return '';
+	}
 
     private function render_grid( $atts ) {
         $categories = $this->get_ready_categories();
@@ -590,4 +604,5 @@ new Click2EU_Status();
 new Click2EU_Dashboard();
 new Click2EU_Expiration();
 new Click2EU_Admin();
+new Click2EU_Settings();
 new Click2EU_Notifications();

@@ -54,7 +54,8 @@ final class Click2EU_Config {
 	}
 
 	public static function join_page_id() {
-		return absint( apply_filters( 'click2eu_join_page_id', get_option( self::JOIN_PAGE_OPTION ) ) );
+		$page_id = class_exists( 'Click2EU_Settings' ) ? Click2EU_Settings::page_id( 'join' ) : get_option( self::JOIN_PAGE_OPTION );
+		return absint( apply_filters( 'click2eu_join_page_id', $page_id ) );
 	}
 
 	public static function join_url() {
@@ -63,10 +64,10 @@ final class Click2EU_Config {
 	}
 
 	public static function candidate_dashboard_id() {
-		return absint( get_option( 'resume_manager_candidate_dashboard_page_id' ) );
+		return class_exists( 'Click2EU_Settings' ) ? Click2EU_Settings::page_id( 'candidate_dashboard' ) : absint( get_option( 'resume_manager_candidate_dashboard_page_id' ) );
 	}
 
 	public static function submit_resume_id() {
-		return absint( get_option( 'resume_manager_submit_resume_form_page_id' ) );
+		return class_exists( 'Click2EU_Settings' ) ? Click2EU_Settings::page_id( 'submit_resume' ) : absint( get_option( 'resume_manager_submit_resume_form_page_id' ) );
 	}
 }

@@ -1,4 +1,59 @@
-# Click2EU Membership 0.6.0
+# Click2EU Membership deployment
+
+## v0.7.4 Phase-1 candidate (release blocked)
+
+The feature branch introduces `Click2EU_Settings`, `Click2EU_Route_Policy` and
+server-side adapters in `Click2EU_Access`. It does not add or migrate a database
+table. The only new persisted value is the namespaced
+`click2eu_phase1_settings` WordPress option after an administrator saves the
+Settings page.
+
+Do not copy LocalWP page IDs to staging or production. In each environment open
+**WP Admin > Click2EU Memberships > Settings**, map every published page, save,
+then re-open the page and verify every diagnostic URL. Missing mappings fail
+closed for protected actions but can make an intended workflow unavailable.
+
+### Required pre-deployment verification
+
+1. Activate legitimately licensed Cariera Core and Cariera Addons on staging.
+2. Confirm Candidate and Employer roles, job/company/resume post types, job and
+   resume taxonomies, real application handlers and Direct Message handlers.
+3. Configure explicit `click2eu_resume_category_map` term-ID mappings. Job and
+   resume term IDs are not interchangeable.
+4. Verify company submission moderation and approve a fixture company before
+   attempting job submission.
+5. Run every BLOCKED row in `docs/INTEGRATION-MATRIX.md` with real vendor forms
+   and inspect authoritative posts/order/application records.
+6. Confirm Checkout, My Account, payment callbacks, WP-Cron and Action Scheduler
+   are not cached or redirected.
+
+### Page-cache/CDN exclusions
+
+Exclude Join Us, Login/Registration, Candidate and Employer dashboards, My
+Profile, My Resumes, Submit Resume, My Account and all endpoints, Cart,
+Checkout, Job Search, job/company/resume archives and singles, their taxonomy
+archives, `wp-admin/admin-ajax.php`, protected REST routes and all personalized
+membership/category responses. Never serve an Active Candidate's entitled job
+response to another user. Purge CDN, page, object and browser caches after
+deployment and rollback.
+
+### Safe rollback
+
+1. Put staging/live behind maintenance controls before changing access code.
+2. Retain the known-good v0.7.3 ZIP and a database backup before deployment.
+3. If a launch-gate test fails, restore the known-good plugin directory as one
+   atomic replacement; do not merge individual vendor or plugin files.
+4. Reactivate only if needed, purge all caches, and verify Join, Checkout, My
+   Account, cron and payment callbacks.
+5. The optional `click2eu_phase1_settings` option may remain; v0.7.3 ignores it.
+   Do not roll back or replace the production database solely for this release.
+
+See `docs/PHASE1-LAUNCH-CHECKLIST.md` for environment diagnostics and the
+staging acceptance sequence.
+
+# Historical deployment documentation
+
+## Click2EU Membership 0.6.0
 
 ## 0.6.0 early renewal and administration
 

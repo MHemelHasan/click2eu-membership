@@ -10,9 +10,14 @@ final class Click2EU_Cariera {
 		add_filter( 'login_redirect', array( $this, 'standard_login_redirect' ), 20, 3 );
 		add_filter( 'the_content', array( $this, 'show_authentication_forms' ), 20 );
 		add_action( 'init', array( $this, 'validate_cariera_registration_role' ), 0 );
+		add_action( 'cariera_dashboard_main_nav_end', array( $this, 'membership_dashboard_link' ) );
 	}
 
 	public function candidate_landing_page( $page_id ) {
+		$membership = is_user_logged_in() ? Click2EU_Category_Access::effective_membership( get_current_user_id() ) : null;
+		if ( $membership && ! is_wp_error( $membership ) && Click2EU_Config::candidate_dashboard_id() ) {
+			return Click2EU_Config::candidate_dashboard_id();
+		}
 		return Click2EU_Config::join_page_id() ?: $page_id;
 	}
 
@@ -20,14 +25,11 @@ final class Click2EU_Cariera {
 		if ( ! $user instanceof WP_User || ! Click2EU_Auth::is_candidate( $user ) ) {
 			return $redirect_to;
 		}
-		if ( $requested_redirect_to && wp_validate_redirect( $requested_redirect_to, false ) ) {
-			return $requested_redirect_to;
-		}
-		$status = Click2EU_Memberships::get_membership_status( $user->ID );
-		if ( 'active' === $status && Click2EU_Config::candidate_dashboard_id() ) {
+		$membership = Click2EU_Category_Access::effective_membership( $user->ID );
+		if ( ! is_wp_error( $membership ) && Click2EU_Config::candidate_dashboard_id() ) {
 			return get_permalink( Click2EU_Config::candidate_dashboard_id() );
 		}
-		return 'pending' === $status ? Click2EU_Auth::my_orders_url() : Click2EU_Config::join_url();
+		return Click2EU_Config::join_url();
 	}
 
 	public function show_authentication_forms( $content ) {
@@ -49,5 +51,13 @@ final class Click2EU_Cariera {
 		if ( $role && ! in_array( $role, array( 'candidate', 'employer' ), true ) ) {
 			wp_send_json( array( 'register' => false, 'message' => '<span class="job-manager-message error">' . esc_html__( 'Please choose Candidate or Employer.', 'click2eu-membership' ) . '</span>' ), 400 );
 		}
+	}
+
+	public function membership_dashboard_link() {
+		if ( ! Click2EU_Auth::is_candidate() || ! function_exists( 'wc_get_account_endpoint_url' ) ) {
+			return;
+		}
+		$url = wc_get_account_endpoint_url( Click2EU_Dashboard::ENDPOINT );
+		echo '<li class="dashboard-menu-item_membership"><a href="' . esc_url( $url ) . '"><i class="icon icon-credit-card"></i>' . esc_html__( 'My Membership', 'click2eu-membership' ) . '</a></li>';
 	}
 }
