@@ -9,6 +9,10 @@ final class Click2EU_Upgrades {
 	const CALCULATION_VERSION = '1';
 	const REVIEW_META = '_click2eu_upgrade_review_required';
 	const CONSUMED_META = '_click2eu_upgrade_credit_consumed_by';
+	const FINALIZED_META = '_click2eu_upgrade_finalized_at';
+	const ZERO_APPROVED_META = '_click2eu_zero_upgrade_approved_at';
+	const REVERSAL_FINGERPRINTS_META = '_click2eu_upgrade_reversal_fingerprints';
+	const MAX_LINEAGE_NODES = 100;
 
 	public function __construct() {
 		add_action( 'template_redirect', array( $this, 'process_request' ), 4 );
@@ -18,6 +22,11 @@ final class Click2EU_Upgrades {
 		add_action( 'woocommerce_checkout_create_order', array( $this, 'copy_order_metadata' ), 20, 2 );
 		add_action( 'woocommerce_store_api_checkout_update_order_meta', array( $this, 'copy_order_metadata' ), 20, 1 );
 		add_action( 'woocommerce_store_api_checkout_order_processed', array( $this, 'copy_order_metadata' ), 20, 1 );
+		add_action( 'woocommerce_order_refunded', array( __CLASS__, 'handle_refund_event' ), 10, 2 );
+		add_action( 'woocommerce_order_partially_refunded', array( __CLASS__, 'handle_refund_event' ), 10, 2 );
+		add_filter( 'woocommerce_order_actions', array( $this, 'order_actions' ), 20, 2 );
+		add_action( 'woocommerce_order_action_click2eu_approve_zero_upgrade', array( $this, 'approve_zero_upgrade' ) );
+		add_action( 'init', array( __CLASS__, 'reconcile_incomplete' ), 40 );
 	}
 
 	public static function allowed_targets( $package ) {
@@ -156,6 +165,38 @@ final class Click2EU_Upgrades {
 
 	public static function is_upgrade_order( $order ) { return $order && 'upgrade' === $order->get_meta( '_click2eu_renewal_type', true ); }
 
+	public function order_actions( $actions, $order ) {
+		if ( $order instanceof WC_Order && self::is_upgrade_order( $order ) && (float) $order->get_total() <= 0 && ! $order->get_meta( self::ZERO_APPROVED_META, true ) ) {
+			$actions['click2eu_approve_zero_upgrade'] = __( 'Approve zero-total Click2EU upgrade', 'click2eu-membership' );
+		}
+		return $actions;
+	}
+
+	public function approve_zero_upgrade( $order ) {
+		if ( ! $order instanceof WC_Order || ! current_user_can( 'manage_woocommerce' ) || ! self::is_upgrade_order( $order ) || (float) $order->get_total() > 0 ) {
+			return;
+		}
+		$order->update_meta_data( self::ZERO_APPROVED_META, Click2EU_Time::mysql() );
+		$order->update_meta_data( '_click2eu_zero_upgrade_approved_by', get_current_user_id() );
+		$order->add_order_note( __( 'Zero-total Click2EU upgrade explicitly approved by an administrator.', 'click2eu-membership' ) );
+		$order->save();
+		if ( 'completed' === $order->get_status() ) {
+			$membership = Click2EU_Memberships::get_membership_for_order( $order->get_id() );
+			$conflict   = 0;
+			if ( $membership && self::activate( $membership, $order, $conflict ) ) {
+				$order = wc_get_order( $order->get_id() );
+				$order->delete_meta_data( Click2EU_Orders::ACTIVATION_CONFLICT_META );
+				$order->delete_meta_data( Click2EU_Orders::ACTIVATION_CONFLICT_AT_META );
+				$order->delete_meta_data( self::REVIEW_META );
+				$order->save();
+			}
+		}
+	}
+
+	public static function handle_refund_event( $order_id, $refund_id = 0 ) {
+		self::handle_source_reversal( $order_id, 'refund', $refund_id );
+	}
+
 	private static function source_basis_is_unchanged( $source, $order ) {
 		$source_order = wc_get_order( absint( $source->order_id ) );
 		$source_item  = $source_order ? $source_order->get_item( absint( $source->order_item_id ) ) : false;
@@ -166,21 +207,77 @@ final class Click2EU_Upgrades {
 		return $source_order->get_currency() === $order->get_currency() && abs( $current_basis - (float) $order->get_meta( '_click2eu_upgrade_paid_basis', true ) ) < 0.000001;
 	}
 
-	public static function handle_source_reversal( $source_order_id ) {
+	public static function handle_source_reversal( $source_order_id, $event = 'status', $refund_id = 0 ) {
 		global $wpdb;
-		$sources = $wpdb->get_col( $wpdb->prepare( 'SELECT membership_id FROM ' . Click2EU_Memberships::table_name() . ' WHERE order_id=%d', absint( $source_order_id ) ) );
-		foreach ( $sources as $source_id ) {
-			$children = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM " . Click2EU_Memberships::table_name() . " WHERE renewal_of_membership_id=%d AND renewal_type='upgrade'", absint( $source_id ) ) );
-			foreach ( $children as $child ) {
-				$upgrade_order = wc_get_order( absint( $child->order_id ) );
-				if ( $upgrade_order ) {
-					$upgrade_order->update_meta_data( self::REVIEW_META, Click2EU_Time::mysql() );
-					$upgrade_order->add_order_note( __( 'Original source order was reversed. Upgrade requires manual financial review; no prior membership was restored.', 'click2eu-membership' ) );
-					$upgrade_order->save();
+		$source_order = wc_get_order( absint( $source_order_id ) );
+		$refund_total = $source_order ? wc_format_decimal( abs( (float) $source_order->get_total_refunded() ), wc_get_price_decimals() ) : 'missing';
+		$fingerprint  = (float) $refund_total > 0 ? 'refund-total:' . $refund_total : sanitize_key( $event ) . ':' . absint( $refund_id );
+		$roots = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM ' . Click2EU_Memberships::table_name() . ' WHERE order_id=%d ORDER BY membership_id ASC', absint( $source_order_id ) ) );
+		foreach ( $roots as $root ) {
+			$queue   = array( absint( $root->membership_id ) );
+			$visited = array();
+			$count   = 0;
+			while ( $queue && $count < self::MAX_LINEAGE_NODES ) {
+				$current_id = array_shift( $queue );
+				if ( isset( $visited[ $current_id ] ) ) { continue; }
+				$visited[ $current_id ] = true;
+				++$count;
+				$current = Click2EU_Memberships::get_membership( $current_id );
+				if ( ! $current || (int) $current->candidate_user_id !== (int) $root->candidate_user_id ) { continue; }
+				self::invalidate_lineage_member( $current, $root->membership_id, $fingerprint );
+				$children = $wpdb->get_results( $wpdb->prepare( "SELECT membership_id,candidate_user_id FROM " . Click2EU_Memberships::table_name() . " WHERE renewal_of_membership_id=%d AND renewal_type='upgrade' ORDER BY membership_id ASC", $current_id ) );
+				foreach ( $children as $child ) {
+					if ( (int) $child->candidate_user_id !== (int) $root->candidate_user_id ) {
+						self::note_lineage_problem( $source_order, $fingerprint, __( 'Cross-user upgrade lineage detected; foreign membership was not modified.', 'click2eu-membership' ) );
+						continue;
+					}
+					if ( isset( $visited[ absint( $child->membership_id ) ] ) ) {
+						self::note_lineage_problem( $source_order, $fingerprint, __( 'Cyclic upgrade lineage detected and contained.', 'click2eu-membership' ) );
+						continue;
+					}
+					$queue[] = absint( $child->membership_id );
 				}
-				if ( 'active' === $child->status ) { Click2EU_Memberships::suspend_order( $child->order_id ); }
+			}
+			if ( $queue ) {
+				self::note_lineage_problem( $source_order, $fingerprint, __( 'Upgrade lineage safety limit reached; administrator review is required.', 'click2eu-membership' ) );
 			}
 		}
+	}
+
+	private static function invalidate_lineage_member( $membership, $root_id, $fingerprint ) {
+		global $wpdb;
+		$order = wc_get_order( absint( $membership->order_id ) );
+		if ( $order ) {
+			$fingerprints = array_filter( (array) $order->get_meta( self::REVERSAL_FINGERPRINTS_META, true ) );
+			if ( ! in_array( $fingerprint, $fingerprints, true ) ) {
+				$fingerprints[] = $fingerprint;
+				$order->update_meta_data( self::REVERSAL_FINGERPRINTS_META, array_slice( $fingerprints, -20 ) );
+				$order->update_meta_data( self::REVIEW_META, Click2EU_Time::mysql() );
+				$order->add_order_note( sprintf( __( 'Click2EU payment-lineage reversal from membership #%1$d invalidated this upgrade chain. Previous memberships were not restored. Event: %2$s', 'click2eu-membership' ), absint( $root_id ), $fingerprint ) );
+				$order->save();
+			}
+		}
+		if ( ! in_array( $membership->status, array( 'active', 'pending', 'scheduled' ), true ) ) { return; }
+		$lock_name = 'click2eu_membership_user_' . absint( $membership->candidate_user_id );
+		if ( 1 !== (int) $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s, 10)', $lock_name ) ) ) { return; }
+		try {
+			$new_status = 'active' === $membership->status ? 'suspended' : 'cancelled';
+			$wpdb->query( $wpdb->prepare( 'UPDATE ' . Click2EU_Memberships::table_name() . " SET status=%s, updated_at=%s WHERE membership_id=%d AND status IN ('active','pending','scheduled')", $new_status, Click2EU_Time::mysql(), $membership->membership_id ) );
+			Click2EU_Expiration::unschedule( $membership->membership_id );
+			Click2EU_Expiration::unschedule_start( $membership->membership_id );
+		} finally {
+			$wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $lock_name ) );
+		}
+	}
+
+	private static function note_lineage_problem( $order, $fingerprint, $message ) {
+		if ( ! $order ) { return; }
+		$key = '_click2eu_lineage_problem_' . md5( $fingerprint . $message );
+		if ( $order->get_meta( $key, true ) ) { return; }
+		$order->update_meta_data( $key, Click2EU_Time::mysql() );
+		$order->update_meta_data( self::REVIEW_META, Click2EU_Time::mysql() );
+		$order->add_order_note( $message );
+		$order->save();
 	}
 
 	public static function activate( $membership, $order, &$conflict_id = 0 ) {
@@ -192,17 +289,20 @@ final class Click2EU_Upgrades {
 		if ( 1 !== (int) $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s, 10)', $lock_name ) ) ) { return false; }
 		try {
 			$membership = Click2EU_Memberships::get_membership( $membership->membership_id ); $source = Click2EU_Memberships::get_membership( $source_id );
-			if ( $membership && 'active' === $membership->status && absint( $source->membership_id ?? 0 ) === $source_id && 'upgraded' === $source->status ) { return true; }
+			if ( $membership && 'active' === $membership->status && absint( $source->membership_id ?? 0 ) === $source_id && 'upgraded' === $source->status ) {
+				return self::finalize_activation( $membership, $source, $order );
+			}
 			$source_order = $source ? wc_get_order( $source->order_id ) : false;
 			$consumed = $source_order ? absint( $source_order->get_meta( self::CONSUMED_META, true ) ) : 0;
-			$item = $order->get_item( $membership->order_item_id );
+			$item = $membership ? $order->get_item( $membership->order_item_id ) : false;
+			$zero_approved = (float) $order->get_total() > 0 || (bool) $order->get_meta( self::ZERO_APPROVED_META, true );
 			$valid = $membership && $source && 'pending' === $membership->status && 'active' === $source->status && ! empty( $source->expires_at ) && Click2EU_Time::now() < Click2EU_Time::timestamp( $source->expires_at )
 				&& (int) $source->candidate_user_id === (int) $membership->candidate_user_id && (int) $source->category_term_id === (int) $membership->category_term_id
 				&& in_array( $membership->package_key, self::allowed_targets( $source->package_key ), true ) && (int) $order->get_user_id() === (int) $membership->candidate_user_id
 				&& $item instanceof WC_Order_Item_Product && (int) $item->get_product_id() === (int) $membership->product_id && $order->get_currency() === $order->get_meta( '_click2eu_upgrade_currency', true )
 				&& self::CALCULATION_VERSION === $order->get_meta( '_click2eu_upgrade_calculation_version', true ) && ! wc_tax_enabled() && self::source_basis_is_unchanged( $source, $order ) && ( ! $consumed || $consumed === (int) $order->get_id() )
-				&& abs( (float) $order->get_total() - (float) $order->get_meta( '_click2eu_upgrade_final_charge', true ) ) < 0.000001;
-			$other = $wpdb->get_var( $wpdb->prepare( 'SELECT membership_id FROM ' . Click2EU_Memberships::table_name() . " WHERE candidate_user_id=%d AND status IN ('active','pending','scheduled') AND membership_id NOT IN (%d,%d) LIMIT 1", $membership->candidate_user_id, $membership->membership_id, $source_id ) );
+				&& abs( (float) $order->get_total() - (float) $order->get_meta( '_click2eu_upgrade_final_charge', true ) ) < 0.000001 && $zero_approved;
+			$other = $membership ? $wpdb->get_var( $wpdb->prepare( 'SELECT membership_id FROM ' . Click2EU_Memberships::table_name() . " WHERE candidate_user_id=%d AND status IN ('active','pending','scheduled') AND membership_id NOT IN (%d,%d) LIMIT 1", $membership->candidate_user_id, $membership->membership_id, $source_id ) ) : 0;
 			if ( ! $valid || $other ) { $conflict_id = $source_id; return false; }
 			$now = Click2EU_Time::mysql(); $expires = Click2EU_Time::mysql( Click2EU_Time::now() + absint( $membership->duration_days ) * DAY_IN_SECONDS );
 			$wpdb->query( 'START TRANSACTION' );
@@ -210,12 +310,64 @@ final class Click2EU_Upgrades {
 			$new = $wpdb->query( $wpdb->prepare( 'UPDATE ' . Click2EU_Memberships::table_name() . " SET status='active', starts_at=%s, activated_at=%s, expires_at=%s, expired_at=NULL, updated_at=%s WHERE membership_id=%d AND status='pending'", $now, $now, $expires, $now, $membership->membership_id ) );
 			if ( 1 !== $old || 1 !== $new ) { $wpdb->query( 'ROLLBACK' ); return false; }
 			$wpdb->query( 'COMMIT' );
-			$source_order->update_meta_data( self::CONSUMED_META, $order->get_id() ); $source_order->save();
-			Click2EU_Expiration::unschedule( $source_id ); Click2EU_Expiration::schedule( $membership->membership_id, $expires );
-			$order->update_meta_data( '_click2eu_upgrade_state', 'activated' ); $order->update_meta_data( '_click2eu_membership_activated', $membership->membership_id );
-			$order->add_order_note( __( 'Click2EU mid-term upgrade activated; source membership retained as Upgraded history.', 'click2eu-membership' ) ); $order->save();
-			return true;
+			$membership = Click2EU_Memberships::get_membership( $membership->membership_id );
+			$source     = Click2EU_Memberships::get_membership( $source_id );
+			return self::finalize_activation( $membership, $source, $order );
 		} finally { $wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $lock_name ) ); }
+	}
+
+	private static function finalize_activation( $membership, $source, $order ) {
+		if ( ! $membership || ! $source || ! $order || 'active' !== $membership->status || 'upgraded' !== $source->status || (int) $membership->renewal_of_membership_id !== (int) $source->membership_id || (int) $membership->candidate_user_id !== (int) $source->candidate_user_id ) { return false; }
+		if ( (float) $order->get_total() <= 0 && ! $order->get_meta( self::ZERO_APPROVED_META, true ) ) { return false; }
+		if ( ! self::source_basis_is_unchanged( $source, $order ) ) {
+			self::handle_source_reversal( $source->order_id, 'reconcile' );
+			return false;
+		}
+		$source_order = wc_get_order( absint( $source->order_id ) );
+		if ( ! $source_order ) { return false; }
+		$consumed = absint( $source_order->get_meta( self::CONSUMED_META, true ) );
+		if ( $consumed && $consumed !== (int) $order->get_id() ) { return false; }
+		if ( apply_filters( 'click2eu_upgrade_fail_before_source_marker', false, $membership, $order ) ) { return false; }
+		$source_order->update_meta_data( self::CONSUMED_META, $order->get_id() );
+		$source_order->save();
+		$source_order = wc_get_order( $source_order->get_id() );
+		if ( (int) $source_order->get_meta( self::CONSUMED_META, true ) !== (int) $order->get_id() ) { return false; }
+		if ( apply_filters( 'click2eu_upgrade_fail_before_schedule', false, $membership, $order ) ) { return false; }
+		Click2EU_Expiration::unschedule( $source->membership_id );
+		if ( ! Click2EU_Expiration::schedule( $membership->membership_id, $membership->expires_at ) ) { return false; }
+		if ( apply_filters( 'click2eu_upgrade_fail_before_target_marker', false, $membership, $order ) ) { return false; }
+		$order = wc_get_order( $order->get_id() );
+		$already_finalized = (bool) $order->get_meta( self::FINALIZED_META, true );
+		$order->update_meta_data( '_click2eu_upgrade_state', 'activated' );
+		$order->update_meta_data( '_click2eu_membership_activated', $membership->membership_id );
+		$order->update_meta_data( self::FINALIZED_META, Click2EU_Time::mysql() );
+		$order->delete_meta_data( self::REVIEW_META );
+		$order->delete_meta_data( Click2EU_Orders::ACTIVATION_CONFLICT_META );
+		$order->delete_meta_data( Click2EU_Orders::ACTIVATION_CONFLICT_AT_META );
+		if ( ! $already_finalized ) { $order->add_order_note( __( 'Click2EU mid-term upgrade activated; source membership retained as Upgraded history.', 'click2eu-membership' ) ); }
+		$order->save();
+		$order = wc_get_order( $order->get_id() );
+		return (int) $order->get_meta( '_click2eu_membership_activated', true ) === (int) $membership->membership_id && (bool) $order->get_meta( self::FINALIZED_META, true );
+	}
+
+	public static function reconcile_incomplete() {
+		global $wpdb;
+		$rows = $wpdb->get_results( "SELECT * FROM " . Click2EU_Memberships::table_name() . " WHERE renewal_type='upgrade' AND status='active' ORDER BY membership_id ASC LIMIT 50" );
+		foreach ( $rows as $membership ) {
+			$order = wc_get_order( absint( $membership->order_id ) );
+			if ( ! $order || 'completed' !== $order->get_status() ) { continue; }
+			if ( (float) $order->get_total() <= 0 && ! $order->get_meta( self::ZERO_APPROVED_META, true ) ) {
+				$order->update_meta_data( self::REVIEW_META, Click2EU_Time::mysql() );
+				$order->add_order_note( __( 'Zero-total upgrade lacked explicit administrator approval and was suspended for review.', 'click2eu-membership' ) );
+				$order->save();
+				Click2EU_Memberships::suspend_order( $order->get_id() );
+				continue;
+			}
+			if ( ! $order->get_meta( self::FINALIZED_META, true ) || (int) $order->get_meta( '_click2eu_membership_activated', true ) !== (int) $membership->membership_id ) {
+				$conflict = 0;
+				self::activate( $membership, $order, $conflict );
+			}
+		}
 	}
 
 	public static function render_for( $source ) {

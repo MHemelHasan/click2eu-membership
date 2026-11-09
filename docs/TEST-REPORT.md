@@ -261,3 +261,48 @@ Not executed: full browser checkout/Block checkout E2E, genuine simultaneous
 multi-process approval load, gateway webhooks, tax-inclusive stores, or production
 payment/refund behavior. Cariera browser E2E remains BLOCKED pending legitimate
 license activation. These limitations prevent a production-ready designation.
+## 0.6.2 executed financial-integrity regression
+
+The suite used temporary `example.invalid` Candidates/admin, injected UTC time,
+HPOS WooCommerce CRUD orders, real local `wc_create_refund()` refund objects,
+isolated ledger rows, and controlled finalization-failure filters. All fixtures,
+refunds, schedules, users and rows were removed afterward.
+
+| Scenario | Result |
+|---|---|
+| Basic → Pro | PASS |
+| Basic → Pro → Elite | PASS |
+| Pro → Premium → Elite | PASS |
+| Original source full refund | PASS |
+| Original source partial refund | PASS |
+| Intermediate upgrade refund | PASS |
+| Current upgrade partial refund | PASS |
+| Duplicate refund callback | PASS |
+| Refund after source already Upgraded | PASS |
+| Missing source order | PASS |
+| Cyclic lineage bounded | PASS |
+| Cross-user malformed lineage not mutated | PASS |
+| Normal renewal unaffected | PASS |
+| Existing expiry unaffected | PASS |
+| Pending upgrade preserves current access | PASS |
+| Duplicate zero-total approval | PASS |
+| Interrupted target metadata write recovery | PASS |
+| Interrupted schedule update recovery | PASS |
+| Zero-total Completed blocked | PASS |
+| Explicit administrator zero-total approval | PASS |
+| Tax-disabled enforcement | PASS |
+| Existing quotation and currency precision | PASS |
+| Unrelated refund ignored | PASS |
+| HPOS CRUD | PASS |
+| Dashboard history rendering | PASS |
+| Admin capability/history rendering | PASS |
+| PHP syntax for every plugin PHP file | PASS |
+
+Static source review confirmed the 100-node lineage bound, missing-record checks,
+positive-charge manual approval path, immutable quote checks, Checkout Block
+metadata hooks, and no direct WooCommerce order-table SQL.
+
+**NOT TESTED:** full browser Classic Checkout, browser Checkout Blocks, real BACS
+gateway callbacks, or genuine simultaneous multi-process load. **BLOCKED:** Cariera
+browser E2E until legitimate local license activation. No production operations
+were performed.
