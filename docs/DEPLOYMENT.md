@@ -413,7 +413,7 @@ upgrade transition succeeds.
 
 ### Storage and queue
 
-Schema version `1.0.0` creates `{prefix}click2eu_notifications`. It stores event
+Schema version `1.1.0` creates or upgrades `{prefix}click2eu_notifications`. It stores event
 identity, source IDs, queue state, UTC scheduling/attempt timestamps and a short
 safe error summary. It does not store recipients, full message bodies, payment
 credentials or license data. The unique `event_key` index is the lifecycle
@@ -468,6 +468,41 @@ recipients. Never point fixture users at real addresses. Before staging release:
 5. Confirm retry diagnostics without sending to production recipients.
 6. Retain the Cariera/browser E2E blocker until legitimate activation is available.
 
-Rollback may deactivate v0.7.1 without dropping the notification ledger. Scheduled
+Rollback may deactivate v0.7.2 without dropping the notification ledger. Scheduled
 notification actions are unscheduled on deactivation; historical rows remain for
 diagnosis and a later safe resume.
+
+## 0.7.2 notification reliability hardening
+
+`event_due_at` is the immutable lifecycle event time. `scheduled_at` is only the
+next queue execution time and may move during retry backoff. Expiry validation uses
+the deterministic event key and `event_due_at`, never the mutable retry timestamp.
+
+The `1.1.0` migration backfills non-reminder rows from their existing scheduled
+time. For v0.7.1 expiry rows it derives the original due time from the membership's
+stored `expires_at` and the 7/3/1-day event type. Status, attempt count, last
+attempt, accepted time and errors are preserved. Missing memberships fall back to
+the existing scheduled timestamp and then fail closed during delivery validation.
+
+Expiry retries are delivered only when all of the following remain true:
+
+- The event key exactly identifies the membership and warning threshold.
+- The immutable due time still matches the stored membership expiry.
+- The event is due under the current UTC clock and the membership is not expired.
+- The membership remains effective Active, with no Scheduled renewal.
+- It has not been upgraded, suspended or cancelled.
+
+An expired processing lease below three attempts remains eligible for the next
+atomic attempt. An expired lease at attempt three is different: transport outcome
+may be unknown, so the runner atomically changes it to `uncertain`, preserves all
+attempt data, suppresses automatic resend and creates the deterministic
+`notification:{id}:delivery-uncertain` administrator alert. Competing runners use
+the same guarded update and cannot overwrite the terminal review state.
+
+The Notifications admin screen exposes an Uncertain filter, original Event Due,
+Next Attempt, last attempt and the safe uncertainty explanation. Uncertain rows do
+not offer ordinary Failed-row retry and are intentionally excluded from automated
+retention cleanup. Operational resolution must consider provider logs before any
+manual communication, because the original message may already have been accepted.
+The uncertainty explanation is stored in `review_note`; the preceding
+`last_error`, attempt count and last-attempt timestamp remain unchanged.

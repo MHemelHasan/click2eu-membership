@@ -459,3 +459,59 @@ crash between mail transport acceptance and the final database update was not
 destructively simulated; the lease-recovery behavior surrounding that window was
 executed. Successful `wp_mail()` interception is reported only as transport
 acceptance, never confirmed inbox delivery.
+
+## 0.7.2 notification reliability hardening
+
+Pre-change isolated reproduction confirmed both findings:
+
+- A failed reminder moved `scheduled_at` by 300 seconds; the next validation
+  returned `stale_event` because it compared that retry time with the original
+  reminder threshold.
+- A row with `status=processing`, `attempt_count=3` and an expired lease was not
+  selected by the bounded runner and remained Processing indefinitely.
+
+The final local suite used only example.invalid users and intercepted every
+`wp_mail()` call. Temporary users, HPOS orders, memberships, notification rows and
+scheduled test actions were removed afterward.
+
+| Executed scenario | Result |
+|---|---|
+| 7-day first failure and successful second attempt | PASS |
+| 3-day two failures and successful third attempt | PASS |
+| 1-day first failure and successful second attempt | PASS |
+| Immutable due time across retry backoff | PASS |
+| Accepted reminder cannot be delivered twice | PASS |
+| Expiration before retry | PASS |
+| Scheduled renewal before retry | PASS |
+| Upgrade before retry | PASS |
+| Refund/suspension before retry | PASS |
+| v0.7.1 retry-row original-time backfill | PASS |
+| Accepted-history migration preservation | PASS |
+| First-claim lease crash recovery | PASS |
+| Second-claim lease crash recovery | PASS |
+| Final-claim lease → Uncertain without Candidate resend | PASS |
+| Deduplicated uncertainty administrator alert | PASS |
+| Duplicate runner and competing worker | PASS |
+| Uncertain outcome retention | PASS |
+| Normal third rejected attempt → Failed | PASS |
+| Previously Accepted row unchanged | PASS |
+| All Candidate lifecycle event regressions | PASS |
+| Activation conflict, upgrade review and lineage alerts | PASS |
+| Candidate ownership and cross-user isolation | PASS |
+| Action Scheduler and WP-Cron fallback | PASS |
+| HTML and plain-text templates | PASS |
+| Accepted-row cleanup / Uncertain preservation | PASS |
+| Admin Uncertain diagnostics, capability and retry nonce | PASS |
+| WooCommerce HPOS | PASS |
+
+Final targeted and regression suite: **47 PASS, 0 FAIL**. PHP 8.2 and PHP
+8.4 syntax checks are executed separately during release validation.
+
+Post-migration uncertainty smoke suite: **7 PASS, 0 FAIL**. This verified the
+installed 1.1.0 schema, preserved transport evidence, separate review notes and
+deduplicated administrator escalation.
+
+**BLOCKED / NOT TESTED:** real SMTP acceptance, provider logs, inbox placement,
+and a destructive operating-system process kill during the post-transport update
+window. The equivalent expired-lease database states were executed deterministically.
+Cariera browser E2E remains BLOCKED pending legitimate activation.
