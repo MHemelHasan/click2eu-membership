@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Click2EU Membership
  * Description: Candidate membership packages, manual-payment activation, access control and WooCommerce integration for Click2EU.
- * Version: 0.9.0
+ * Version: 0.9.1
  * Requires Plugins: woocommerce
  * Requires PHP: 7.4
  * Author: HemelHasan
@@ -52,7 +52,7 @@ add_action( 'before_woocommerce_init', function () {
 } );
 
 final class Click2EU_Membership_Phase_One {
-    private const VERSION = '0.9.0';
+    private const VERSION = '0.9.1';
 
     /** Phase 1: existing, separately-created WooCommerce simple products. */
     private const PRODUCTS = array(
@@ -87,6 +87,8 @@ final class Click2EU_Membership_Phase_One {
     );
 
     private $form_count = 0;
+	private $join_context_loaded = false;
+	private $join_context_state  = null;
 
     public function __construct() {
         add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_styles' ) );
@@ -230,13 +232,51 @@ final class Click2EU_Membership_Phase_One {
 
 	private function access_notice() {
 		$reason = isset( $_GET['membership'] ) ? sanitize_key( wp_unslash( $_GET['membership'] ) ) : '';
-		if ( 'required' === $reason ) {
-			return '<div class="c2eu-notice" role="status"><strong>' . esc_html__( 'Membership Required', 'click2eu-membership' ) . '</strong><br>' . esc_html__( 'Choose a plan or sign in. Pending payments do not unlock protected Candidate features.', 'click2eu-membership' ) . '</div>';
-		}
 		if ( 'category' === $reason ) {
 			return '<div class="c2eu-notice" role="status"><strong>' . esc_html__( 'Category Restricted', 'click2eu-membership' ) . '</strong><br>' . esc_html__( 'That job is outside the category covered by your membership.', 'click2eu-membership' ) . '</div>';
 		}
+
+		$state = $this->join_context_state();
+		if ( $state && in_array( $state['type'], array( 'on-hold', 'pending' ), true ) ) {
+			return $this->render_join_order_summary( $state );
+		}
+		if ( $state && 'expired' === $state['type'] ) {
+			return '<div class="c2eu-join-context c2eu-join-context--expired"><h2>' . esc_html__( 'Your Membership Has Expired', 'click2eu-membership' ) . '</h2><p>' . esc_html__( 'Your membership has expired. Choose a plan below to restore access to protected Candidate features, including resume creation and management.', 'click2eu-membership' ) . '</p><a href="' . esc_url( wc_get_account_endpoint_url( Click2EU_Dashboard::ENDPOINT ) ) . '">' . esc_html__( 'View My Membership', 'click2eu-membership' ) . '</a></div>';
+		}
+		if ( 'required' === $reason ) {
+			return '<div class="c2eu-notice" role="status"><strong>' . esc_html__( 'Membership Required', 'click2eu-membership' ) . '</strong><br>' . esc_html__( 'An active membership is required to access this feature. Please choose a membership plan to continue.', 'click2eu-membership' ) . '</div>';
+		}
 		return '';
+	}
+
+	private function join_context_state() {
+		if ( ! $this->join_context_loaded ) {
+			$this->join_context_loaded = true;
+			$join_page_id = Click2EU_Settings::page_id( 'join' );
+			if ( $join_page_id && is_page( $join_page_id ) ) {
+				$this->join_context_state = Click2EU_Payment_Notice::handle_join_context_state();
+			}
+		}
+		return $this->join_context_state;
+	}
+
+	private function render_join_order_summary( $state ) {
+		$membership = $state['membership'];
+		$order      = $state['order'];
+		$on_hold    = 'on-hold' === $state['type'];
+		$title      = $on_hold ? __( 'Payment Verification in Progress', 'click2eu-membership' ) : __( 'Payment Still Pending', 'click2eu-membership' );
+		$message    = $on_hold
+			? __( 'Your membership order has already been placed. We are awaiting verification of your bank transfer. Once your payment is confirmed, your membership will be activated and your resume access will be unlocked.', 'click2eu-membership' )
+			: __( "We haven't received your membership payment yet. Please complete your bank transfer using the payment instructions provided with your order. Your membership will remain inactive until payment has been verified.", 'click2eu-membership' );
+		$html  = '<section class="c2eu-join-context c2eu-join-context--' . esc_attr( $state['type'] ) . '" aria-labelledby="c2eu-join-context-title">';
+		$html .= '<h2 id="c2eu-join-context-title">' . esc_html( $title ) . '</h2><p>' . esc_html( $message ) . '</p><dl>';
+		$html .= '<div><dt>' . esc_html__( 'Purchased Plan', 'click2eu-membership' ) . '</dt><dd>' . esc_html( ucfirst( sanitize_key( $membership->package_key ) ) ) . '</dd></div>';
+		$html .= '<div><dt>' . esc_html__( 'Job Category', 'click2eu-membership' ) . '</dt><dd>' . esc_html( $membership->category_label ) . '</dd></div>';
+		$html .= '<div><dt>' . esc_html__( 'Order', 'click2eu-membership' ) . '</dt><dd>' . esc_html( '#' . $order->get_order_number() ) . '</dd></div>';
+		$html .= '<div><dt>' . esc_html__( 'Order Status', 'click2eu-membership' ) . '</dt><dd>' . esc_html( wc_get_order_status_name( $order->get_status() ) ) . '</dd></div>';
+		$html .= '<div><dt>' . esc_html__( 'Membership Status', 'click2eu-membership' ) . '</dt><dd>' . esc_html( ucfirst( sanitize_key( $membership->status ) ) ) . '</dd></div></dl>';
+		$html .= '<a href="' . esc_url( wc_get_account_endpoint_url( Click2EU_Dashboard::ENDPOINT ) ) . '">' . esc_html__( 'View My Membership', 'click2eu-membership' ) . '</a></section>';
+		return $html;
 	}
 
     private function render_grid( $atts ) {
@@ -335,6 +375,11 @@ final class Click2EU_Membership_Phase_One {
 		$renewal    = $renewal_id ? Click2EU_Memberships::get_membership( $renewal_id ) : null;
 		$is_renewal = $renewal && is_user_logged_in() && (int) $renewal->candidate_user_id === get_current_user_id() && 'active' === $renewal->status && $tier === $renewal->package_key;
 		$selected_category = $is_renewal ? absint( $renewal->category_term_id ) : 0;
+		$join_state = $this->join_context_state();
+		if ( ! $is_renewal && $join_state && in_array( $join_state['type'], array( 'active', 'on-hold', 'pending' ), true ) ) {
+			$label = 'active' === $join_state['type'] ? __( 'Manage Membership', 'click2eu-membership' ) : __( 'Already Ordered — View My Membership', 'click2eu-membership' );
+			return '<a class="c2eu-join-button c2eu-join-button--management" href="' . esc_url( wc_get_account_endpoint_url( Click2EU_Dashboard::ENDPOINT ) ) . '">' . esc_html( $label ) . '</a>';
+		}
         $select_id = 'c2eu-category-' . sanitize_html_class( $tier ) . '-' . $this->form_count;
         $html = '<form class="c2eu-join-form" method="post" action="">';
         $html .= '<input type="hidden" name="click2eu_join_submit" value="1">';

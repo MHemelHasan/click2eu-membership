@@ -135,6 +135,17 @@ final class Click2EU_Memberships {
 		);
 	}
 
+	/** Latest genuine expired row only; bounded so notices never scan order history. */
+	public static function get_latest_expired_membership_for_user( $user_id ) {
+		global $wpdb;
+		return $wpdb->get_row(
+			$wpdb->prepare(
+				'SELECT * FROM ' . self::table_name() . " WHERE candidate_user_id = %d AND status = 'expired' AND expires_at IS NOT NULL ORDER BY expires_at DESC, membership_id DESC LIMIT 1",
+				absint( $user_id )
+			)
+		);
+	}
+
 	public static function get_renewal_for_user( $user_id, $statuses = array( 'pending', 'scheduled' ) ) {
 		global $wpdb;
 		$statuses = array_values( array_intersect( array_map( 'sanitize_key', (array) $statuses ), array( 'pending', 'scheduled', 'active', 'expired', 'cancelled', 'suspended' ) ) );

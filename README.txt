@@ -1,5 +1,16 @@
-Click2EU Membership (v0.9.0)
+Click2EU Membership (v0.9.1)
 =======================================
+
+v0.9.1 CONTEXTUAL MEMBERSHIP NOTICES:
+- Limits the Active success notice to 24 hours from its UTC `activated_at`
+  value and adds nonce-protected, activation-specific user dismissal.
+- Keeps unresolved renewal or upgrade payment information visible after the
+  transient Active success is dismissed or expires.
+- Adds an ownership-validated Expired notice and reuses the notice renderer on
+  My Account > My Membership without changing existing Elementor shortcodes.
+- Adds Join-page-only owned order context and replaces initial Join forms with
+  My Membership links for Active or unresolved-order Candidates; homepage
+  pricing components and trusted renewal forms retain their existing behavior.
 
 v0.9.0 CANDIDATE PAYMENT STATUS NOTICES:
 - Adds the Candidate-only `[click2eu_payment_status_notice]` shortcode for

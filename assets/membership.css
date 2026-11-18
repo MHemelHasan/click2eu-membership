@@ -901,6 +901,7 @@
   box-shadow: 0 8px 24px rgba(23, 44, 85, 0.07);
   color: #263a5d;
   box-sizing: border-box;
+  position: relative;
 }
 
 .c2eu-payment-notice--pending {
@@ -915,6 +916,12 @@
   --c2eu-notice-surface: #f3fbf7;
 }
 
+.c2eu-payment-notice--expired {
+  --c2eu-notice-accent: #9a3f31;
+  --c2eu-notice-border: #e4c0ba;
+  --c2eu-notice-surface: #fff7f5;
+}
+
 .c2eu-payment-notice__marker {
   flex: 0 0 12px;
   width: 12px;
@@ -927,6 +934,7 @@
 }
 
 .c2eu-payment-notice__body {
+  flex: 1 1 auto;
   min-width: 0;
 }
 
@@ -975,6 +983,123 @@
   border-radius: 3px;
 }
 
+.c2eu-payment-notice__dismiss {
+  flex: 0 0 auto;
+  margin: -7px -7px 0 0;
+}
+
+.c2eu-payment-notice__dismiss-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #405272;
+  font: 700 25px/1 sans-serif;
+  cursor: pointer;
+}
+
+.c2eu-payment-notice__dismiss-button:hover {
+  background: rgba(23, 44, 85, 0.08);
+  color: #172c55;
+}
+
+.c2eu-payment-notice__dismiss-button:focus-visible {
+  outline: 3px solid var(--c2eu-notice-accent);
+  outline-offset: 2px;
+}
+
+.c2eu-membership .c2eu-join-context {
+  margin: 0 0 28px;
+  padding: 22px;
+  border: 1px solid #cbdcf2;
+  border-left: 5px solid #3767a6;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(23, 44, 85, 0.07);
+  color: #405272;
+}
+
+.c2eu-membership .c2eu-join-context--pending {
+  border-color: #ead2a5;
+  border-left-color: #9a5b08;
+}
+
+.c2eu-membership .c2eu-join-context--expired {
+  border-color: #e4c0ba;
+  border-left-color: #9a3f31;
+}
+
+.c2eu-membership .c2eu-join-context h2 {
+  margin: 0 0 8px;
+  color: #172c55;
+  font-size: 20px;
+  line-height: 1.35;
+}
+
+.c2eu-membership .c2eu-join-context > p {
+  margin: 0 0 16px;
+  line-height: 1.65;
+}
+
+.c2eu-membership .c2eu-join-context dl {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 16px;
+}
+
+.c2eu-membership .c2eu-join-context dl > div {
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid #e7edf7;
+  border-radius: 9px;
+  background: #f8faff;
+}
+
+.c2eu-membership .c2eu-join-context dt {
+  margin-bottom: 4px;
+  color: #64728d;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.c2eu-membership .c2eu-join-context dd {
+  margin: 0;
+  color: #172c55;
+  font-size: 13px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.c2eu-membership .c2eu-join-context > a {
+  color: #2458cf;
+  font-size: 14px;
+  font-weight: 800;
+  text-underline-offset: 3px;
+}
+
+.c2eu-membership .c2eu-join-context > a:focus-visible {
+  outline: 3px solid #3468ff;
+  outline-offset: 3px;
+}
+
+.c2eu-membership .c2eu-join-button--management {
+  margin-top: auto;
+}
+
+@media (max-width: 900px) {
+  .c2eu-membership .c2eu-join-context dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 600px) {
   .c2eu-payment-notice {
     gap: 11px;
@@ -984,5 +1109,17 @@
 
   .c2eu-payment-notice__title {
     font-size: 16px;
+  }
+
+  .c2eu-payment-notice__dismiss {
+    margin: -5px -5px 0 -3px;
+  }
+
+  .c2eu-membership .c2eu-join-context {
+    padding: 17px 15px;
+  }
+
+  .c2eu-membership .c2eu-join-context dl {
+    grid-template-columns: 1fr;
   }
 }

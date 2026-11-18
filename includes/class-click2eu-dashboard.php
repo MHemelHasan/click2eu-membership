@@ -75,6 +75,7 @@ final class Click2EU_Dashboard {
 			'value' => true,
 		);
 		$allowed_html['button'] = array(
+			'aria-label' => true,
 			'class' => true,
 			'name'  => true,
 			'type'  => true,
@@ -112,6 +113,7 @@ final class Click2EU_Dashboard {
 		$html  = '<section class="c2eu-membership c2eu-membership-dashboard" aria-labelledby="c2eu-membership-heading">';
 		$html .= '<header class="c2eu-dashboard__header"><p class="c2eu-dashboard__eyebrow">' . esc_html__( 'Candidate account', 'click2eu-membership' ) . '</p>';
 		$html .= '<h2 id="c2eu-membership-heading">' . esc_html__( 'My Membership', 'click2eu-membership' ) . '</h2></header>';
+		$html .= Click2EU_Payment_Notice::render_for_current_user();
 		$html .= $this->render_current_membership( $current, $user_id );
 		$html .= $this->render_renewal( $renewal, $user_id );
 		$html .= Click2EU_Upgrades::render_for( $current );
