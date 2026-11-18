@@ -515,19 +515,75 @@ final class Click2EU_Upgrades {
 		return $processed;
 	}
 
+	
 	public static function render_for( $source ) {
-		if ( ! $source || 'active' !== $source->status || empty( $source->expires_at ) ) { return ''; }
-		$html = '<div class="c2eu-dashboard__section c2eu-dashboard__upgrades"><h3>' . esc_html__( 'Upgrade Membership', 'click2eu-membership' ) . '</h3>';
-		foreach ( self::allowed_targets( $source->package_key ) as $target ) {
-			$quote = self::quote( $source, $target ); if ( is_wp_error( $quote ) ) { continue; }
-			$html .= '<article class="c2eu-dashboard__card"><h4>' . esc_html( ucfirst( $source->package_key ) . ' → ' . ucfirst( $target ) ) . '</h4><dl class="c2eu-dashboard__details">';
-			$html .= '<div><dt>' . esc_html__( 'Verified payment basis', 'click2eu-membership' ) . '</dt><dd>' . wp_kses_post( wc_price( $quote['paid_basis'], array( 'currency' => $quote['currency'] ) ) ) . '</dd></div>';
-			$html .= '<div><dt>' . esc_html__( 'Unused-time credit', 'click2eu-membership' ) . '</dt><dd>' . wp_kses_post( wc_price( $quote['credit_amount'], array( 'currency' => $quote['currency'] ) ) ) . '</dd></div>';
-			$html .= '<div><dt>' . esc_html__( 'Target full duration', 'click2eu-membership' ) . '</dt><dd>' . esc_html( $quote['target_duration_days'] . ' days' ) . '</dd></div>';
-			$html .= '<div><dt>' . esc_html__( 'Tax', 'click2eu-membership' ) . '</dt><dd>' . esc_html__( 'Not applicable', 'click2eu-membership' ) . '</dd></div>';
-			$html .= '<div><dt>' . esc_html__( 'Final amount due', 'click2eu-membership' ) . '</dt><dd>' . wp_kses_post( wc_price( $quote['final_charge'], array( 'currency' => $quote['currency'] ) ) ) . '</dd></div></dl>';
-			$html .= '<form method="post"><input type="hidden" name="click2eu_upgrade_submit" value="1"><input type="hidden" name="source_membership_id" value="' . esc_attr( $source->membership_id ) . '"><input type="hidden" name="target_package" value="' . esc_attr( $target ) . '">' . wp_nonce_field( 'click2eu_upgrade_' . $source->membership_id . '_' . $target, 'click2eu_upgrade_nonce', true, false ) . '<button class="c2eu-dashboard__button" type="submit">' . esc_html__( 'Upgrade', 'click2eu-membership' ) . '</button></form></article>';
+		// Preserve the original eligibility requirement.
+		if ( ! $source || 'active' !== $source->status || empty( $source->expires_at ) ) {
+			return '';
 		}
-		return $html . '</div>';
+
+		$cards = '';
+
+		foreach ( self::allowed_targets( $source->package_key ) as $target ) {
+			// The original server-side calculation remains untouched.
+			$quote = self::quote( $source, $target );
+			if ( is_wp_error( $quote ) ) {
+				continue;
+			}
+
+			$currency = array( 'currency' => $quote['currency'] );
+			$paid_html   = wp_kses_post( wc_price( $quote['paid_basis'], $currency ) );
+			$credit_html = wp_kses_post( wc_price( $quote['credit_amount'], $currency ) );
+			$due_html    = wp_kses_post( wc_price( $quote['final_charge'], $currency ) );
+			$tier_class  = sanitize_html_class( $target );
+
+			$cards .= '<article class="c2eu-upgrade-card c2eu-upgrade-card--' . esc_attr( $tier_class ) . '">';
+			$cards .= '<div class="c2eu-upgrade-card__heading">';
+			$cards .= '<p class="c2eu-upgrade-card__from">' . esc_html( ucfirst( $source->package_key ) ) . ' &rarr;</p>';
+			$cards .= '<h4 class="c2eu-upgrade-card__name">' . esc_html( ucfirst( $target ) ) . '</h4>';
+			$cards .= '</div>';
+
+			$cards .= '<div class="c2eu-upgrade-card__total">';
+			$cards .= '<strong class="c2eu-upgrade-card__amount">' . $due_html . '</strong>';
+			$cards .= '<span class="c2eu-upgrade-card__total-label">' . esc_html__( 'Final amount due', 'click2eu-membership' ) . '</span>';
+			$cards .= '</div>';
+
+			$cards .= '<div class="c2eu-upgrade-card__duration">';
+			$cards .= '<span>' . esc_html__( 'Target full duration', 'click2eu-membership' ) . '</span>';
+			$cards .= '<strong>' . esc_html( $quote['target_duration_days'] . ' days' ) . '</strong>';
+			$cards .= '</div>';
+
+			$cards .= '<dl class="c2eu-upgrade-card__details">';
+			$cards .= '<div><dt>' . esc_html__( 'Verified payment basis', 'click2eu-membership' ) . '</dt><dd>' . $paid_html . '</dd></div>';
+			$cards .= '<div><dt>' . esc_html__( 'Unused-time credit', 'click2eu-membership' ) . '</dt><dd>' . $credit_html . '</dd></div>';
+			$cards .= '<div><dt>' . esc_html__( 'Tax', 'click2eu-membership' ) . '</dt><dd>' . esc_html__( 'Not applicable', 'click2eu-membership' ) . '</dd></div>';
+			$cards .= '</dl>';
+
+			// Keep the exact POST field names and nonce used by process_request().
+			$cards .= '<form method="post" class="c2eu-upgrade-card__form">';
+			$cards .= '<input type="hidden" name="click2eu_upgrade_submit" value="1">';
+			$cards .= '<input type="hidden" name="source_membership_id" value="' . esc_attr( $source->membership_id ) . '">';
+			$cards .= '<input type="hidden" name="target_package" value="' . esc_attr( $target ) . '">';
+			$cards .= wp_nonce_field(
+				'click2eu_upgrade_' . $source->membership_id . '_' . $target,
+				'click2eu_upgrade_nonce',
+				true,
+				false
+			);
+			$cards .= '<button class="c2eu-upgrade-card__button" type="submit">' . esc_html__( 'Upgrade', 'click2eu-membership' ) . '</button>';
+			$cards .= '</form>';
+			$cards .= '</article>';
+		}
+
+		if ( '' === $cards ) {
+			return '';
+		}
+
+		return '<div class="c2eu-dashboard__section c2eu-dashboard__upgrades">'
+			. '<h3>' . esc_html__( 'Upgrade Membership', 'click2eu-membership' ) . '</h3>'
+			. '<p class="c2eu-upgrades__intro">' . esc_html__( 'Choose the membership that fits your goals.', 'click2eu-membership' ) . '</p>'
+			. '<div class="c2eu-upgrade-grid">' . $cards . '</div>'
+			. '</div>';
 	}
+
 }
