@@ -5,10 +5,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class Click2EU_Config {
-	const VERSION           = '0.3.1';
-	const DB_VERSION        = '1.0.0';
+	const VERSION           = '0.7.4';
+	const DB_VERSION        = '3.0.0';
+	const NOTIFICATION_DB_VERSION = '1.1.0';
 	const JOIN_PAGE_OPTION  = 'click2eu_join_page_id';
 	const DB_VERSION_OPTION = 'click2eu_membership_db_version';
+	const NOTIFICATION_DB_VERSION_OPTION = 'click2eu_notification_db_version';
 
 	public static function products() {
 		$products = apply_filters(
@@ -24,6 +26,25 @@ final class Click2EU_Config {
 		return is_array( $products ) ? array_map( 'absint', $products ) : array();
 	}
 
+	public static function durations() {
+		$durations = apply_filters(
+			'click2eu_membership_durations',
+			array(
+				'basic'   => 30,
+				'pro'     => 90,
+				'premium' => 180,
+				'elite'   => 365,
+			)
+		);
+		return is_array( $durations ) ? array_map( 'absint', $durations ) : array();
+	}
+
+	public static function duration_for_package( $package ) {
+		$durations = self::durations();
+		$package   = sanitize_key( $package );
+		return isset( $durations[ $package ] ) ? absint( $durations[ $package ] ) : 0;
+	}
+
 	public static function package_for_product( $product_id ) {
 		return array_search( absint( $product_id ), self::products(), true );
 	}
@@ -33,7 +54,8 @@ final class Click2EU_Config {
 	}
 
 	public static function join_page_id() {
-		return absint( apply_filters( 'click2eu_join_page_id', get_option( self::JOIN_PAGE_OPTION ) ) );
+		$page_id = class_exists( 'Click2EU_Settings' ) ? Click2EU_Settings::page_id( 'join' ) : get_option( self::JOIN_PAGE_OPTION );
+		return absint( apply_filters( 'click2eu_join_page_id', $page_id ) );
 	}
 
 	public static function join_url() {
@@ -42,10 +64,10 @@ final class Click2EU_Config {
 	}
 
 	public static function candidate_dashboard_id() {
-		return absint( get_option( 'resume_manager_candidate_dashboard_page_id' ) );
+		return class_exists( 'Click2EU_Settings' ) ? Click2EU_Settings::page_id( 'candidate_dashboard' ) : absint( get_option( 'resume_manager_candidate_dashboard_page_id' ) );
 	}
 
 	public static function submit_resume_id() {
-		return absint( get_option( 'resume_manager_submit_resume_form_page_id' ) );
+		return class_exists( 'Click2EU_Settings' ) ? Click2EU_Settings::page_id( 'submit_resume' ) : absint( get_option( 'resume_manager_submit_resume_form_page_id' ) );
 	}
 }

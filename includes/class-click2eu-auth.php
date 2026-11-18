@@ -16,15 +16,17 @@ final class Click2EU_Auth {
 	}
 
 	public static function cariera_auth_url() {
-		$layout = get_option( 'cariera_login_register_layout' );
-		$page   = absint( apply_filters( 'cariera_login_register_page', get_option( 'cariera_login_register_page' ) ) );
+		$mapped = class_exists( 'Click2EU_Settings' ) ? Click2EU_Settings::page_id( 'login' ) : 0;
+		$page   = absint( apply_filters( 'cariera_login_register_page', $mapped ?: get_option( 'cariera_login_register_page' ) ) );
 
-		if ( 'popup' !== $layout && $page ) {
+		if ( $page && $page !== Click2EU_Config::join_page_id() && 'publish' === get_post_status( $page ) ) {
 			return get_permalink( $page );
 		}
 
-		// The popup is available on public theme pages; Join Us is a stable landing page for it.
-		return add_query_arg( 'click2eu_auth', '1', Click2EU_Config::join_url() ) . '#login-register-popup';
+		// Never inject authentication forms into Join Us. A missing mapping falls
+		// back to WordPress authentication with a validated, local continuation.
+		$join = wp_validate_redirect( Click2EU_Config::join_url(), home_url( '/' ) );
+		return wp_login_url( $join );
 	}
 
 	public static function my_orders_url() {

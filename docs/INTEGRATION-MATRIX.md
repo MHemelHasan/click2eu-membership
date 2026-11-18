@@ -1,0 +1,116 @@
+# v0.8.0-A Integration Matrix
+
+## v0.7.4 final artifact status
+
+Final package status: **built for controlled pre-launch acceptance**. Client
+launch status: **NO-GO until every critical Cariera-enabled row below passes**.
+Unexecuted vendor-handler scenarios remain BLOCKED/NOT TESTED, never PASS.
+
+## v0.7.4 RC1 final-polish matrix
+
+| Actor / request | Expected destination / response | Local result |
+|---|---|---|
+| Guest direct Join | Public pricing, no auth forms | PASS |
+| Guest legacy Join auth query | Mapped auth; safe WP fallback if missing | PASS (fallback exercised) |
+| Guest Join POST | Auth page; no cart/order | PASS |
+| Guest protected Jobs HTML | Auth page | PASS |
+| Logged unpaid/Pending protected HTML | Join | PASS by unchanged policy/source; authenticated browser NOT TESTED |
+| Active Candidate login | Candidate Dashboard | BLOCKED on real Cariera handler |
+| Candidate registration | Join | BLOCKED on real Cariera handler |
+| Employer authentication | Cariera employer destination, never Candidate Join | Unchanged source; BLOCKED on real Cariera handler |
+| Cart/Checkout/Order Pay/Received/My Account | Commerce bypass/continuation | Unchanged source; focused regression NOT TESTED this turn |
+| Protected REST/AJAX | Structured 401/403 | Unchanged source; prior coverage retained |
+| Notifications filters/counts/pagination | Read-only bounded admin view | PASS runtime render/source inspection |
+| Failed retry / Uncertain | Failed-only nonce action / no retry | PASS source inspection |
+
+## v0.7.4 Phase-1 candidate matrix
+
+| Area / scenario | Status | Evidence source |
+|---|---|---|
+| Page Mapping, fixed policy and diagnostics | PASS | WordPress runtime assertions and source review |
+| v0.7.3 Pending Join -> Orders diagnosis | PASS | Real Chrome CDP chain reproduced |
+| Feature Pending allowed-page navigation | PASS | Real Chrome CDP; direct 200 |
+| Candidate login: Pending Join / Active Dashboard | PASS | Real Chrome normal login plus integration |
+| Cart/Checkout/Order Received redirect exclusion | PASS | Focused integration and real Chrome |
+| Classic Checkout: Cheque and BACS | PASS | Real Chrome, payment instructions and HPOS readback |
+| On-hold order -> Pending ledger | PASS | WooCommerce CRUD/database readback |
+| Completed -> Active -> Refunded/Suspended | PASS | Isolated HPOS lifecycle readback |
+| Guest protected HTML -> Join | PASS | Real local HTTP 302 and final 200 |
+| Unpaid/Pending paid access denied | PASS | Runtime assertions and HTTP 302/403 |
+| Unpaid Dashboard/Profile/Orders/My Membership | PASS | Authenticated local HTTP 200 |
+| Active exact-category job detail/listing | PASS | Authenticated HTTP and WPJM AJAX response |
+| Active nonmatching category denied | PASS | Authenticated HTTP 302 to category notice |
+| Guest/unpaid listing AJAX | PASS | Structured 401/403 JSON |
+| Direct application/resume/message POST denial | PASS | Real local HTTP 401/403 before handler mutation |
+| Search/feed/sitemap disclosure | PASS | No fixture data; protected sitemap 404 |
+| Employer company approval policy | PASS (integration) | Isolated posts and server validation |
+| Resume ownership/category/active visibility | PASS (integration) | Isolated WordPress assertions |
+| REST collection/single/write policy | PASS (integration) | `WP_REST_Request` dispatch-policy assertions |
+| PHP 8.2 and 8.4 syntax | PASS | CLI lint |
+| Real Chrome rendered UI/console/network | PASS (local routing/checkout) | Chrome 156 CDP 1.3 |
+| Cariera Candidate AJAX login | BLOCKED | Cariera Core inactive locally |
+| Cariera resume create/edit/moderation | BLOCKED | Cariera Addons inactive locally |
+| Cariera application/CV/Apply With Resume persistence | BLOCKED | Cariera Addons inactive locally |
+| Cariera company UI and Employer job workflow | BLOCKED | Vendor runtime inactive locally |
+| Cariera Direct Message runtime handlers | BLOCKED | Vendor runtime inactive locally |
+| Authenticated live Pending redirect chain | BLOCKED | Disposable browser stopped at live password protection; no live credentials used |
+
+The original Phase-1 isolated suite completed **35 PASS, 0 FAIL**. The focused
+routing suite added **8 PASS, 0 FAIL**. Blocked vendor rows are not counted as
+passes, and the candidate therefore remains NO-GO.
+
+| Area / scenario | Status | Evidence source |
+|---|---|---|
+| Plugin active; schemas 3.0.0 / 1.1.0 | PASS | WP-CLI and database readback |
+| HPOS compatibility and order CRUD | PASS | WP-CLI, integration, real browser admin |
+| Action Scheduler availability and group runner | PASS | WP-CLI (`0` due tasks, clean completion) |
+| Notification WP-Cron runner/cleanup fallback | PASS | Isolated WP-CLI integration (300s / 86400s) |
+| Join cards and product mappings 11868–11871 | PASS | Real browser and integration |
+| Responsive desktop/mobile card layout | PASS | Real browser screenshots; no body overflow |
+| Empty category selection | PASS | Real browser native required-field validation |
+| Tampered invalid category POST | PASS | WordPress integration, server-side validation |
+| Classic Checkout, all four plans | PASS | Real browser |
+| Checkout Blocks / Store API | NOT TESTED | Checkout Block not configured |
+| Order ownership and cross-user isolation | PASS | Real browser and integration |
+| Duplicate active/pending purchase rejection | PASS | Real browser plus integration |
+| Login/user change checkout validation | NOT TESTED | No separate browser session mutation executed |
+| Pending to Completed to Active | PASS | Real browser and integration |
+| Completion callback idempotency | PASS | Real browser admin repeat plus integration |
+| 30/90/180/365-day expiry timestamps | PASS | Integration readback |
+| Remaining days and history pagination | PASS | Real browser and integration |
+| Exact expiration and expired access denial | PASS | Controlled WordPress integration |
+| Expired Candidate repurchase | PASS | WordPress integration |
+| Early renewal Scheduled state and original preservation | PASS | Real browser and integration |
+| Delayed renewal boundary, no unearned access | PASS | Controlled WordPress integration |
+| Basic→Pro, Basic→Premium, Pro→Elite | PASS | Real browser and integration |
+| Quote credit/total and full target term | PASS | Real browser and integration |
+| Expired upgrade quote rejection | PASS | WordPress integration |
+| Credit single consumption / recovery idempotency | PASS | WordPress integration |
+| Refund lineage suspension | PASS | WordPress integration |
+| Zero-total explicit approval workflow | NOT TESTED | No safe zero-total browser fixture created |
+| Exact category match | PASS | WordPress integration |
+| Nonmatch / missing / parent-child denial | PASS | WordPress integration |
+| Multi-category exact match | PASS | WordPress integration |
+| Public job browse and employer bypass | PASS | Real browser and integration |
+| Cross-user protected ownership | PASS | Real browser and integration |
+| Direct protected REST write fail-closed | PASS | WordPress integration (HTTP 403) |
+| Payment/activation lifecycle notifications | PASS | Integration with intercepted `wp_mail()` |
+| Renewal scheduled/started notifications | PASS | Integration with intercepted `wp_mail()` |
+| Upgrade, expiry, suspension and admin alerts | PASS | Integration with intercepted `wp_mail()` |
+| Deduplication and 300-second retry | PASS | WordPress integration |
+| Final-attempt Uncertain and preserved evidence | PASS | Integration plus real admin browser |
+| Failed retry capability / scoped nonce | PASS | Real browser |
+| Membership filters/details/history | PASS | Real admin browser |
+| Notification filters/mobile overflow containment | PASS | Real admin browser |
+| Missing/deleted order behavior | PASS | WordPress integration |
+| Recovery cursor and bounded batch logic | PASS | WordPress integration and source inspection |
+| Distinct-process concurrency load | NOT TESTED | No multi-process load test executed |
+| PHP syntax on 8.2 and 8.4 | PASS | CLI lint |
+| Real SMTP/provider/inbox delivery | NOT TESTED | Mail deliberately intercepted |
+| Cariera registration/login/application/resume | BLOCKED | Vendor components inactive |
+
+The valid integration assertions finished **62 PASS, 0 product FAIL**. The first
+retry harness contained two invalid assertions because it selected an upgrade
+target for a generic activation event. The engine correctly rejected that event;
+the harness was corrected to an original Active membership and all three focused
+retry assertions passed. This is a test-fixture correction, not a product waiver.
