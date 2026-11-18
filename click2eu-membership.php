@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Click2EU Membership
  * Description: Candidate membership packages, manual-payment activation, access control and WooCommerce integration for Click2EU.
- * Version: 0.7.4
+ * Version: 0.7.5
  * Requires Plugins: woocommerce
  * Requires PHP: 7.4
  * Author: HemelHasan
@@ -51,7 +51,7 @@ add_action( 'before_woocommerce_init', function () {
 } );
 
 final class Click2EU_Membership_Phase_One {
-    private const VERSION = '0.7.4';
+    private const VERSION = '0.7.5';
 
     /** Phase 1: existing, separately-created WooCommerce simple products. */
     private const PRODUCTS = array(
@@ -399,18 +399,14 @@ final class Click2EU_Membership_Phase_One {
             $this->redirect_error( 'security', $tier );
         }
 
-        // Candidate accounts register and sign in through the existing Cariera flow.
-        if ( ! is_user_logged_in() ) {
-            wp_safe_redirect( Click2EU_Auth::cariera_auth_url() );
-            exit;
-        }
-
-        if ( ! Click2EU_Auth::is_candidate() ) {
+        // New Candidates register during Classic Checkout. Existing users must
+        // authenticate there; a logged-in non-Candidate is never converted.
+        if ( is_user_logged_in() && ! Click2EU_Auth::is_candidate() ) {
             $this->redirect_error( 'candidate_only', $tier );
         }
 
 		$user_id = get_current_user_id();
-		if ( Click2EU_Memberships::has_pending_membership( $user_id ) || Click2EU_Memberships::has_scheduled_membership( $user_id ) ) {
+		if ( $user_id && ( Click2EU_Memberships::has_pending_membership( $user_id ) || Click2EU_Memberships::has_scheduled_membership( $user_id ) ) ) {
             wp_safe_redirect( Click2EU_Auth::my_orders_url() );
             exit;
         }
@@ -429,7 +425,7 @@ final class Click2EU_Membership_Phase_One {
         }
 
 		$renewal_of = 0;
-		if ( Click2EU_Memberships::has_active_membership( $user_id ) ) {
+		if ( $user_id && Click2EU_Memberships::has_active_membership( $user_id ) ) {
 			$active = Click2EU_Memberships::get_membership_for_user( $user_id );
 			if ( ! $active || empty( $active->expires_at ) ) {
 				$this->redirect_error( 'renewal_unavailable', $tier );

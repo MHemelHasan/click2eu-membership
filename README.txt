@@ -1,5 +1,20 @@
-Click2EU Membership (v0.7.4)
+Click2EU Membership (v0.7.5)
 =======================================
+
+v0.7.5 CLASSIC CHECKOUT CANDIDATE REGISTRATION:
+- Logged-out visitors now move directly from a validated Click2EU pricing-card
+  selection to WooCommerce Classic Checkout with the package and category kept
+  in the cart.
+- A validated one-item Click2EU membership cart enables and requires checkout
+  registration, disables guest ordering, shows WooCommerce's checkout login
+  prompt and uses WooCommerce's generated-password account email flow.
+- New checkout accounts receive the existing Cariera `candidate` role before
+  WordPress creates the user. The role is never accepted from visitor input and
+  unrelated WooCommerce registrations retain their configured role.
+- Existing users must authenticate through WooCommerce; logged-in accounts with
+  a non-Candidate role remain unchanged and cannot purchase Candidate plans.
+- Order lifecycle, membership activation, payment notices and duplicate-order
+  policy remain unchanged for later delivery phases.
 
 v0.7.4 PHASE-1 ACCESS CONTROL:
 - Adds a centralized actor/route policy covering protected job, company and

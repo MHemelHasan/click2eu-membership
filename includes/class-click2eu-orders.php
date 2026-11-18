@@ -11,8 +11,84 @@ final class Click2EU_Orders {
 	public function __construct() {
 		add_filter( 'woocommerce_add_to_cart_validation', array( $this, 'validate_add_to_cart' ), 10, 6 );
 		add_action( 'woocommerce_check_cart_items', array( $this, 'validate_cart' ) );
+		add_filter( 'woocommerce_checkout_registration_enabled', array( $this, 'enable_checkout_registration' ) );
+		add_filter( 'woocommerce_checkout_registration_required', array( $this, 'require_checkout_registration' ) );
+		add_filter( 'option_woocommerce_enable_checkout_login_reminder', array( $this, 'enable_checkout_login' ) );
+		add_filter( 'option_woocommerce_registration_generate_password', array( $this, 'generate_checkout_password' ) );
+		add_filter( 'woocommerce_new_customer_data', array( $this, 'candidate_customer_data' ) );
+		add_action( 'woocommerce_after_checkout_validation', array( $this, 'validate_checkout_account' ), 10, 2 );
 		add_action( 'woocommerce_checkout_order_created', array( $this, 'record_pending_order' ) );
 		add_action( 'woocommerce_order_status_changed', array( $this, 'handle_status_change' ), 10, 4 );
+	}
+
+	/**
+	 * A validated membership cart is the server-side boundary for checkout
+	 * registration. Never infer Candidate intent from posted account fields.
+	 */
+	private function is_membership_checkout_cart() {
+		if ( ! function_exists( 'WC' ) || ! WC()->cart ) {
+			return false;
+		}
+
+		$membership_items = array_filter(
+			WC()->cart->get_cart(),
+			static function ( $cart_item ) {
+				$product_id = absint( $cart_item['variation_id'] ?? 0 ) ?: absint( $cart_item['product_id'] ?? 0 );
+				return Click2EU_Config::is_membership_product( $product_id );
+			}
+		);
+		if ( 1 !== count( $membership_items ) ) {
+			return false;
+		}
+
+		$item        = reset( $membership_items );
+		$product_id  = absint( $item['variation_id'] ?? 0 ) ?: absint( $item['product_id'] ?? 0 );
+		$package     = sanitize_key( $item['click2eu_package'] ?? '' );
+		$category_id = absint( $item['click2eu_category_id'] ?? 0 );
+		$term        = $category_id ? get_term( $category_id, 'job_listing_category' ) : null;
+
+		return Click2EU_Config::is_membership_product( $product_id )
+			&& 1 === absint( $item['quantity'] ?? 0 )
+			&& Click2EU_Config::package_for_product( $product_id ) === $package
+			&& $term
+			&& ! is_wp_error( $term )
+			&& 'job_listing_category' === $term->taxonomy;
+	}
+
+	public function enable_checkout_registration( $enabled ) {
+		return $this->is_membership_checkout_cart() ? true : $enabled;
+	}
+
+	public function require_checkout_registration( $required ) {
+		return $this->is_membership_checkout_cart() ? true : $required;
+	}
+
+	public function enable_checkout_login( $value ) {
+		return $this->is_membership_checkout_cart() ? 'yes' : $value;
+	}
+
+	public function generate_checkout_password( $value ) {
+		return $this->is_membership_checkout_cart() ? 'yes' : $value;
+	}
+
+	public function candidate_customer_data( $customer_data ) {
+		if ( ! is_user_logged_in() && $this->is_membership_checkout_cart() && get_role( 'candidate' ) ) {
+			$customer_data['role'] = 'candidate';
+		}
+		return $customer_data;
+	}
+
+	public function validate_checkout_account( $data, $errors ) {
+		if ( ! $this->is_membership_checkout_cart() || ! $errors instanceof WP_Error ) {
+			return;
+		}
+		if ( is_user_logged_in() && ! Click2EU_Auth::is_candidate() ) {
+			$errors->add( 'click2eu_candidate_required', __( 'Please sign in with a Candidate account to purchase a Candidate membership. This account has a different role.', 'click2eu-membership' ) );
+			return;
+		}
+		if ( ! is_user_logged_in() && ! get_role( 'candidate' ) ) {
+			$errors->add( 'click2eu_candidate_role_missing', __( 'Candidate registration is temporarily unavailable. Please contact support.', 'click2eu-membership' ) );
+		}
 	}
 
 	public function validate_add_to_cart( $passed, $product_id, $quantity, $variation_id = 0, $variations = array(), $cart_item_data = array() ) {
@@ -20,15 +96,11 @@ final class Click2EU_Orders {
 		if ( ! Click2EU_Config::is_membership_product( $checked_id ) ) {
 			return $passed;
 		}
-		if ( ! is_user_logged_in() ) {
-			wc_add_notice( __( 'Please register or sign in as a Candidate before choosing a membership.', 'click2eu-membership' ), 'error' );
-			return false;
-		}
-		if ( ! Click2EU_Auth::is_candidate() ) {
+		if ( is_user_logged_in() && ! Click2EU_Auth::is_candidate() ) {
 			wc_add_notice( __( 'Candidate memberships can only be purchased by Candidate accounts.', 'click2eu-membership' ), 'error' );
 			return false;
 		}
-		if ( Click2EU_Memberships::has_active_membership( get_current_user_id() ) ) {
+		if ( is_user_logged_in() && Click2EU_Memberships::has_active_membership( get_current_user_id() ) ) {
 			$active = Click2EU_Memberships::get_membership_for_user( get_current_user_id() );
 			$is_upgrade = 'upgrade' === sanitize_key( $cart_item_data['click2eu_renewal_type'] ?? '' );
 			$valid_renewal = $active && ! empty( $active->expires_at ) && absint( $cart_item_data['click2eu_renewal_of_membership_id'] ?? 0 ) === absint( $active->membership_id ) && absint( $active->category_term_id ) === absint( $cart_item_data['click2eu_category_id'] ?? 0 ) && ( absint( $active->product_id ) === absint( $checked_id ) || ( $is_upgrade && Click2EU_Config::package_for_product( $checked_id ) && in_array( Click2EU_Config::package_for_product( $checked_id ), Click2EU_Upgrades::allowed_targets( $active->package_key ), true ) ) );
@@ -57,14 +129,14 @@ final class Click2EU_Orders {
 		if ( count( $membership_items ) > 1 ) {
 			wc_add_notice( __( 'Only one Candidate membership package can be purchased per order.', 'click2eu-membership' ), 'error' );
 		}
-		if ( $membership_items && ( Click2EU_Memberships::has_pending_membership( get_current_user_id() ) || Click2EU_Memberships::has_scheduled_membership( get_current_user_id() ) ) ) {
+		if ( $membership_items && is_user_logged_in() && ( Click2EU_Memberships::has_pending_membership( get_current_user_id() ) || Click2EU_Memberships::has_scheduled_membership( get_current_user_id() ) ) ) {
 			wc_add_notice( __( 'You already have a membership order awaiting payment approval.', 'click2eu-membership' ), 'error' );
 		}
 		foreach ( WC()->cart->get_cart() as $item ) {
 			if ( ! Click2EU_Config::is_membership_product( $item['product_id'] ?? 0 ) ) {
 				continue;
 			}
-			if ( ! is_user_logged_in() || ! Click2EU_Auth::is_candidate() ) {
+			if ( is_user_logged_in() && ! Click2EU_Auth::is_candidate() ) {
 				wc_add_notice( __( 'A signed-in Candidate account is required for Candidate membership checkout.', 'click2eu-membership' ), 'error' );
 			}
 			$category_id = absint( $item['click2eu_category_id'] ?? 0 );
@@ -73,7 +145,7 @@ final class Click2EU_Orders {
 			if ( Click2EU_Config::package_for_product( $item['product_id'] ?? 0 ) !== $package || ! $term || is_wp_error( $term ) ) {
 				wc_add_notice( __( 'The membership package or job category is invalid. Please choose it again.', 'click2eu-membership' ), 'error' );
 			}
-			if ( Click2EU_Memberships::has_active_membership( get_current_user_id() ) ) {
+			if ( is_user_logged_in() && Click2EU_Memberships::has_active_membership( get_current_user_id() ) ) {
 				$active = Click2EU_Memberships::get_membership_for_user( get_current_user_id() );
 				$is_upgrade = 'upgrade' === sanitize_key( $item['click2eu_renewal_type'] ?? '' );
 				$valid_package = $package === $active->package_key || ( $is_upgrade && in_array( $package, Click2EU_Upgrades::allowed_targets( $active->package_key ), true ) );
