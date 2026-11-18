@@ -19,8 +19,7 @@ final class Click2EU_Cariera {
 	}
 
 	public function candidate_landing_page( $page_id ) {
-		$membership = is_user_logged_in() ? Click2EU_Category_Access::effective_membership( get_current_user_id() ) : null;
-		if ( $membership && ! is_wp_error( $membership ) && Click2EU_Config::candidate_dashboard_id() ) {
+		if ( Click2EU_Auth::is_candidate() && Click2EU_Config::candidate_dashboard_id() ) {
 			return Click2EU_Config::candidate_dashboard_id();
 		}
 		return Click2EU_Config::join_page_id() ?: $page_id;
@@ -33,8 +32,7 @@ final class Click2EU_Cariera {
 		if ( $requested_redirect_to && Click2EU_Route_Policy::is_purchase_url( $requested_redirect_to ) ) {
 			return $requested_redirect_to;
 		}
-		$membership = Click2EU_Category_Access::effective_membership( $user->ID );
-		if ( ! is_wp_error( $membership ) && Click2EU_Config::candidate_dashboard_id() ) {
+		if ( Click2EU_Config::candidate_dashboard_id() ) {
 			return get_permalink( Click2EU_Config::candidate_dashboard_id() );
 		}
 		return Click2EU_Config::join_url();

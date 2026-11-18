@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Click2EU Membership
  * Description: Candidate membership packages, manual-payment activation, access control and WooCommerce integration for Click2EU.
- * Version: 0.7.5
+ * Version: 0.8.0
  * Requires Plugins: woocommerce
  * Requires PHP: 7.4
  * Author: HemelHasan
@@ -51,7 +51,7 @@ add_action( 'before_woocommerce_init', function () {
 } );
 
 final class Click2EU_Membership_Phase_One {
-    private const VERSION = '0.7.5';
+    private const VERSION = '0.8.0';
 
     /** Phase 1: existing, separately-created WooCommerce simple products. */
     private const PRODUCTS = array(
@@ -338,6 +338,9 @@ final class Click2EU_Membership_Phase_One {
         $html = '<form class="c2eu-join-form" method="post" action="">';
         $html .= '<input type="hidden" name="click2eu_join_submit" value="1">';
         $html .= '<input type="hidden" name="click2eu_package" value="' . esc_attr( $tier ) . '">';
+		if ( $is_renewal ) {
+			$html .= '<input type="hidden" name="click2eu_renew_membership_id" value="' . esc_attr( $renewal->membership_id ) . '">';
+		}
         $html .= wp_nonce_field( 'click2eu_join_' . $tier, 'click2eu_nonce', true, false );
         $html .= '<label class="screen-reader-text" for="' . esc_attr( $select_id ) . '">Select your job category</label>';
         $html .= '<select id="' . esc_attr( $select_id ) . '" name="click2eu_category_id" required aria-required="true">';
@@ -406,8 +409,9 @@ final class Click2EU_Membership_Phase_One {
         }
 
 		$user_id = get_current_user_id();
-		if ( $user_id && ( Click2EU_Memberships::has_pending_membership( $user_id ) || Click2EU_Memberships::has_scheduled_membership( $user_id ) ) ) {
-            wp_safe_redirect( Click2EU_Auth::my_orders_url() );
+		$unresolved_order = $user_id ? Click2EU_Orders::unresolved_initial_order_for_user( $user_id ) : false;
+		if ( $unresolved_order ) {
+			wp_safe_redirect( $unresolved_order->get_view_order_url() ?: Click2EU_Auth::my_orders_url() );
             exit;
         }
 
@@ -427,8 +431,16 @@ final class Click2EU_Membership_Phase_One {
 		$renewal_of = 0;
 		if ( $user_id && Click2EU_Memberships::has_active_membership( $user_id ) ) {
 			$active = Click2EU_Memberships::get_membership_for_user( $user_id );
+			$requested_renewal = isset( $_POST['click2eu_renew_membership_id'] ) ? absint( wp_unslash( $_POST['click2eu_renew_membership_id'] ) ) : 0;
 			if ( ! $active || empty( $active->expires_at ) ) {
 				$this->redirect_error( 'renewal_unavailable', $tier );
+			}
+			if ( $requested_renewal !== absint( $active->membership_id ) ) {
+				$this->redirect_error( 'already_active', $tier );
+			}
+			if ( Click2EU_Memberships::has_pending_membership( $user_id ) || Click2EU_Memberships::has_scheduled_membership( $user_id ) ) {
+				wp_safe_redirect( wc_get_account_endpoint_url( Click2EU_Dashboard::ENDPOINT ) );
+				exit;
 			}
 			if ( $active->package_key !== $tier || absint( $active->category_term_id ) !== $category_id ) {
 				$this->redirect_error( 'upgrade_unavailable', $tier );

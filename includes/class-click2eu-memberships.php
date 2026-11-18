@@ -124,6 +124,17 @@ final class Click2EU_Memberships {
 		return (bool) $wpdb->get_var( $wpdb->prepare( 'SELECT membership_id FROM ' . self::table_name() . " WHERE candidate_user_id = %d AND status = 'scheduled' LIMIT 1", absint( $user_id ) ) );
 	}
 
+	/** Pending initial rows only; renewal and upgrade rows are intentionally excluded. */
+	public static function get_pending_initial_memberships( $user_id ) {
+		global $wpdb;
+		return $wpdb->get_results(
+			$wpdb->prepare(
+				'SELECT * FROM ' . self::table_name() . " WHERE candidate_user_id = %d AND status = 'pending' AND renewal_of_membership_id IS NULL ORDER BY membership_id DESC LIMIT 20",
+				absint( $user_id )
+			)
+		);
+	}
+
 	public static function get_renewal_for_user( $user_id, $statuses = array( 'pending', 'scheduled' ) ) {
 		global $wpdb;
 		$statuses = array_values( array_intersect( array_map( 'sanitize_key', (array) $statuses ), array( 'pending', 'scheduled', 'active', 'expired', 'cancelled', 'suspended' ) ) );

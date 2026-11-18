@@ -17,6 +17,7 @@ final class Click2EU_Orders {
 		add_filter( 'option_woocommerce_registration_generate_password', array( $this, 'generate_checkout_password' ) );
 		add_filter( 'woocommerce_new_customer_data', array( $this, 'candidate_customer_data' ) );
 		add_action( 'woocommerce_after_checkout_validation', array( $this, 'validate_checkout_account' ), 10, 2 );
+		add_filter( 'woocommerce_cancel_unpaid_order', array( $this, 'preserve_pending_bank_transfer_order' ), 10, 2 );
 		add_action( 'woocommerce_checkout_order_created', array( $this, 'record_pending_order' ) );
 		add_action( 'woocommerce_order_status_changed', array( $this, 'handle_status_change' ), 10, 4 );
 	}
@@ -100,6 +101,13 @@ final class Click2EU_Orders {
 			wc_add_notice( __( 'Candidate memberships can only be purchased by Candidate accounts.', 'click2eu-membership' ), 'error' );
 			return false;
 		}
+		if ( is_user_logged_in() && empty( $cart_item_data['click2eu_renewal_of_membership_id'] ) ) {
+			$existing_order = self::unresolved_initial_order_for_user( get_current_user_id() );
+			if ( $existing_order ) {
+				wc_add_notice( self::existing_order_message( $existing_order ), 'error' );
+				return false;
+			}
+		}
 		if ( is_user_logged_in() && Click2EU_Memberships::has_active_membership( get_current_user_id() ) ) {
 			$active = Click2EU_Memberships::get_membership_for_user( get_current_user_id() );
 			$is_upgrade = 'upgrade' === sanitize_key( $cart_item_data['click2eu_renewal_type'] ?? '' );
@@ -129,9 +137,6 @@ final class Click2EU_Orders {
 		if ( count( $membership_items ) > 1 ) {
 			wc_add_notice( __( 'Only one Candidate membership package can be purchased per order.', 'click2eu-membership' ), 'error' );
 		}
-		if ( $membership_items && is_user_logged_in() && ( Click2EU_Memberships::has_pending_membership( get_current_user_id() ) || Click2EU_Memberships::has_scheduled_membership( get_current_user_id() ) ) ) {
-			wc_add_notice( __( 'You already have a membership order awaiting payment approval.', 'click2eu-membership' ), 'error' );
-		}
 		foreach ( WC()->cart->get_cart() as $item ) {
 			if ( ! Click2EU_Config::is_membership_product( $item['product_id'] ?? 0 ) ) {
 				continue;
@@ -141,9 +146,18 @@ final class Click2EU_Orders {
 			}
 			$category_id = absint( $item['click2eu_category_id'] ?? 0 );
 			$package     = sanitize_key( $item['click2eu_package'] ?? '' );
+			$renewal_of  = absint( $item['click2eu_renewal_of_membership_id'] ?? 0 );
 			$term        = $category_id ? get_term( $category_id, 'job_listing_category' ) : null;
 			if ( Click2EU_Config::package_for_product( $item['product_id'] ?? 0 ) !== $package || ! $term || is_wp_error( $term ) ) {
 				wc_add_notice( __( 'The membership package or job category is invalid. Please choose it again.', 'click2eu-membership' ), 'error' );
+			}
+			if ( is_user_logged_in() && ! $renewal_of ) {
+				$existing_order = self::unresolved_initial_order_for_user( get_current_user_id() );
+				if ( $existing_order && ! wc_has_notice( self::existing_order_message( $existing_order ), 'error' ) ) {
+					wc_add_notice( self::existing_order_message( $existing_order ), 'error' );
+				}
+			} elseif ( is_user_logged_in() && $renewal_of && ( Click2EU_Memberships::has_pending_membership( get_current_user_id() ) || Click2EU_Memberships::has_scheduled_membership( get_current_user_id() ) ) ) {
+				wc_add_notice( __( 'Resolve the existing membership order before starting another renewal or upgrade.', 'click2eu-membership' ), 'error' );
 			}
 			if ( is_user_logged_in() && Click2EU_Memberships::has_active_membership( get_current_user_id() ) ) {
 				$active = Click2EU_Memberships::get_membership_for_user( get_current_user_id() );
@@ -154,6 +168,48 @@ final class Click2EU_Orders {
 				}
 			}
 		}
+	}
+
+	/** Return an ownership-validated unresolved initial order, never a renewal or upgrade. */
+	public static function unresolved_initial_order_for_user( $user_id ) {
+		$user_id = absint( $user_id );
+		if ( ! $user_id || ! function_exists( 'wc_get_order' ) ) {
+			return false;
+		}
+		foreach ( Click2EU_Memberships::get_pending_initial_memberships( $user_id ) as $membership ) {
+			$order = wc_get_order( absint( $membership->order_id ) );
+			if ( ! $order || (int) $order->get_user_id() !== $user_id || ! in_array( $order->get_status(), array( 'pending', 'on-hold', 'processing' ), true ) ) {
+				continue;
+			}
+			$item = $order->get_item( absint( $membership->order_item_id ) );
+			if ( $item instanceof WC_Order_Item_Product && (int) $item->get_product_id() === (int) $membership->product_id && Click2EU_Config::is_membership_product( $membership->product_id ) ) {
+				return $order;
+			}
+		}
+		return false;
+	}
+
+	private static function existing_order_message( $order ) {
+		$url = $order->get_view_order_url();
+		if ( 'on-hold' === $order->get_status() ) {
+			$message = __( 'Your membership order has already been placed. We are currently verifying your bank transfer. You do not need to place another order.', 'click2eu-membership' );
+		} else {
+			$message = __( 'You already have a membership order awaiting payment. Please complete your bank transfer using the payment instructions provided with your order.', 'click2eu-membership' );
+		}
+		return $url ? $message . ' <a href="' . esc_url( $url ) . '">' . esc_html__( 'View order', 'click2eu-membership' ) . '</a>' : $message;
+	}
+
+	/** Keep only validated Click2EU BACS orders out of WooCommerce's global pending-order timeout. */
+	public function preserve_pending_bank_transfer_order( $should_cancel, $order ) {
+		if ( ! $should_cancel || ! $order instanceof WC_Order || 'pending' !== $order->get_status() || 'bacs' !== $order->get_payment_method() ) {
+			return $should_cancel;
+		}
+		$membership = Click2EU_Memberships::get_membership_for_order( $order->get_id() );
+		if ( ! $membership || 'pending' !== $membership->status || (int) $membership->candidate_user_id !== (int) $order->get_user_id() ) {
+			return $should_cancel;
+		}
+		$item = $order->get_item( absint( $membership->order_item_id ) );
+		return $item instanceof WC_Order_Item_Product && (int) $item->get_product_id() === (int) $membership->product_id && Click2EU_Config::is_membership_product( $membership->product_id ) ? false : $should_cancel;
 	}
 
 	public function record_pending_order( $order ) {

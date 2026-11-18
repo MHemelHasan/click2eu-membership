@@ -1,5 +1,18 @@
-Click2EU Membership (v0.7.5)
+Click2EU Membership (v0.8.0)
 =======================================
+
+v0.8.0 ORDER AND MEMBERSHIP LIFECYCLE RELIABILITY:
+- Blocks duplicate initial checkout when an ownership-validated Pending or On
+  hold Click2EU order already exists, while keeping renewal and upgrade lineage
+  separate.
+- Requires the existing explicit My Membership renewal continuation before an
+  active Candidate can create an early-renewal order.
+- Keeps validated Pending payment Click2EU BACS orders out of WooCommerce's
+  global Hold Stock cancellation task without affecting unrelated orders.
+- Preserves Completed-only activation, idempotent ledger creation, renewal
+  scheduling, upgrade safeguards, reversals, expiration and HPOS order CRUD.
+- Pending Candidates now land on the configured Candidate dashboard after login;
+  paid Candidate features continue to require an effective Active membership.
 
 v0.7.5 CLASSIC CHECKOUT CANDIDATE REGISTRATION:
 - Logged-out visitors now move directly from a validated Click2EU pricing-card
