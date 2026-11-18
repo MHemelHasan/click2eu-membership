@@ -1,5 +1,14 @@
-Click2EU Membership (v0.8.0)
+Click2EU Membership (v0.9.0)
 =======================================
+
+v0.9.0 CANDIDATE PAYMENT STATUS NOTICES:
+- Adds the Candidate-only `[click2eu_payment_status_notice]` shortcode for
+  ownership-validated Pending payment, On hold and effective Active states.
+- Active entitlement takes precedence over historical Pending orders, while an
+  unresolved renewal or upgrade is described without removing active access.
+- Repeated initial Join attempts and normal Join attempts by Active Candidates
+  now redirect to My Account > My Membership.
+- The shortcode marks its page non-cacheable and uses WooCommerce HPOS CRUD.
 
 v0.8.0 ORDER AND MEMBERSHIP LIFECYCLE RELIABILITY:
 - Blocks duplicate initial checkout when an ownership-validated Pending or On

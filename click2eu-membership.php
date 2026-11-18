@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Click2EU Membership
  * Description: Candidate membership packages, manual-payment activation, access control and WooCommerce integration for Click2EU.
- * Version: 0.8.0
+ * Version: 0.9.0
  * Requires Plugins: woocommerce
  * Requires PHP: 7.4
  * Author: HemelHasan
@@ -30,6 +30,7 @@ require_once __DIR__ . '/includes/class-click2eu-access.php';
 require_once __DIR__ . '/includes/class-click2eu-cariera.php';
 require_once __DIR__ . '/includes/class-click2eu-status.php';
 require_once __DIR__ . '/includes/class-click2eu-dashboard.php';
+require_once __DIR__ . '/includes/class-click2eu-payment-notice.php';
 require_once __DIR__ . '/includes/class-click2eu-admin.php';
 
 register_activation_hook( __FILE__, array( 'Click2EU_Memberships', 'install' ) );
@@ -51,7 +52,7 @@ add_action( 'before_woocommerce_init', function () {
 } );
 
 final class Click2EU_Membership_Phase_One {
-    private const VERSION = '0.8.0';
+    private const VERSION = '0.9.0';
 
     /** Phase 1: existing, separately-created WooCommerce simple products. */
     private const PRODUCTS = array(
@@ -411,7 +412,7 @@ final class Click2EU_Membership_Phase_One {
 		$user_id = get_current_user_id();
 		$unresolved_order = $user_id ? Click2EU_Orders::unresolved_initial_order_for_user( $user_id ) : false;
 		if ( $unresolved_order ) {
-			wp_safe_redirect( $unresolved_order->get_view_order_url() ?: Click2EU_Auth::my_orders_url() );
+			wp_safe_redirect( wc_get_account_endpoint_url( Click2EU_Dashboard::ENDPOINT ) );
             exit;
         }
 
@@ -436,7 +437,8 @@ final class Click2EU_Membership_Phase_One {
 				$this->redirect_error( 'renewal_unavailable', $tier );
 			}
 			if ( $requested_renewal !== absint( $active->membership_id ) ) {
-				$this->redirect_error( 'already_active', $tier );
+				wp_safe_redirect( wc_get_account_endpoint_url( Click2EU_Dashboard::ENDPOINT ) );
+				exit;
 			}
 			if ( Click2EU_Memberships::has_pending_membership( $user_id ) || Click2EU_Memberships::has_scheduled_membership( $user_id ) ) {
 				wp_safe_redirect( wc_get_account_endpoint_url( Click2EU_Dashboard::ENDPOINT ) );
@@ -610,6 +612,7 @@ new Click2EU_Access();
 new Click2EU_Cariera();
 new Click2EU_Status();
 new Click2EU_Dashboard();
+new Click2EU_Payment_Notice();
 new Click2EU_Expiration();
 new Click2EU_Admin();
 new Click2EU_Settings();

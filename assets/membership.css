@@ -883,3 +883,106 @@
     transform: none;
   }
 }
+
+/* Candidate frontend payment status shortcode. */
+.c2eu-payment-notice {
+  --c2eu-notice-accent: #3767a6;
+  --c2eu-notice-border: #cbdcf2;
+  --c2eu-notice-surface: #f7faff;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  width: 100%;
+  margin: 0 0 24px;
+  padding: 20px;
+  border: 1px solid var(--c2eu-notice-border);
+  border-radius: 14px;
+  background: var(--c2eu-notice-surface);
+  box-shadow: 0 8px 24px rgba(23, 44, 85, 0.07);
+  color: #263a5d;
+  box-sizing: border-box;
+}
+
+.c2eu-payment-notice--pending {
+  --c2eu-notice-accent: #9a5b08;
+  --c2eu-notice-border: #ead2a5;
+  --c2eu-notice-surface: #fffaf0;
+}
+
+.c2eu-payment-notice--active {
+  --c2eu-notice-accent: #16704a;
+  --c2eu-notice-border: #b9ddcd;
+  --c2eu-notice-surface: #f3fbf7;
+}
+
+.c2eu-payment-notice__marker {
+  flex: 0 0 12px;
+  width: 12px;
+  height: 12px;
+  margin-top: 7px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--c2eu-notice-accent);
+  box-shadow: 0 0 0 1px var(--c2eu-notice-accent);
+}
+
+.c2eu-payment-notice__body {
+  min-width: 0;
+}
+
+.c2eu-payment-notice__title {
+  margin: 0 0 7px;
+  color: #172c55;
+  font: 800 18px/1.35 "Plus Jakarta Sans", sans-serif;
+}
+
+.c2eu-payment-notice__message,
+.c2eu-payment-notice__secondary,
+.c2eu-payment-notice__order {
+  margin: 0 0 10px;
+  color: #405272;
+  font: 500 14px/1.65 "Plus Jakarta Sans", sans-serif;
+}
+
+.c2eu-payment-notice__secondary {
+  padding-left: 12px;
+  border-left: 3px solid var(--c2eu-notice-accent);
+  font-weight: 700;
+}
+
+.c2eu-payment-notice__order {
+  color: #263a5d;
+  font-weight: 700;
+}
+
+.c2eu-payment-notice__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  color: var(--c2eu-notice-accent);
+  font: 800 14px/1.4 "Plus Jakarta Sans", sans-serif;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.c2eu-payment-notice__link:hover {
+  color: #172c55;
+}
+
+.c2eu-payment-notice__link:focus-visible {
+  outline: 3px solid var(--c2eu-notice-accent);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+@media (max-width: 600px) {
+  .c2eu-payment-notice {
+    gap: 11px;
+    padding: 17px 15px;
+    border-radius: 12px;
+  }
+
+  .c2eu-payment-notice__title {
+    font-size: 16px;
+  }
+}

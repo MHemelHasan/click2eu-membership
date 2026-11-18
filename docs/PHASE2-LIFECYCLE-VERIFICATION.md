@@ -30,8 +30,8 @@ item ID. In the Click2EU ledger, confirm `candidate_user_id`, `order_id`,
 
 1. New BACS checkout: one Candidate, one On hold order and one Pending ledger
    row. Activation and expiration timestamps remain empty.
-2. Attempt Join again while On hold: redirect to the owned existing order; no
-   second order or ledger row.
+2. Attempt Join again while On hold: redirect to My Membership; no second order
+   or ledger row. The owned order remains available from My Membership.
 3. Change On hold to Pending payment: ledger remains Pending and protected
    features remain locked.
 4. Run the WooCommerce unpaid-order scheduled action after the configured Hold
