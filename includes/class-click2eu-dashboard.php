@@ -19,6 +19,19 @@ final class Click2EU_Dashboard {
 		add_filter( 'woocommerce_account_menu_items', array( $this, 'account_menu_items' ) );
 		add_action( 'woocommerce_account_' . self::ENDPOINT . '_endpoint', array( $this, 'account_content' ) );
 		add_shortcode( 'click2eu_membership_dashboard', array( $this, 'shortcode' ) );
+		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_endpoint_assets' ) );
+	}
+
+	public function enqueue_endpoint_assets() {
+		if ( function_exists( 'is_wc_endpoint_url' ) && is_wc_endpoint_url( self::ENDPOINT ) ) {
+			wp_enqueue_script(
+				'click2eu-payment-instructions',
+				plugin_dir_url( dirname( __DIR__ ) . '/click2eu-membership.php' ) . 'assets/payment-instructions.js',
+				array(),
+				Click2EU_Config::VERSION,
+				true
+			);
+		}
 	}
 
 	public static function activate() {
@@ -76,19 +89,22 @@ final class Click2EU_Dashboard {
 		);
 		$allowed_html['button'] = array(
 			'aria-label' => true,
+			'aria-live' => true,
 			'class' => true,
+			'data-copy-label' => true,
+			'data-copy-value' => true,
 			'name'  => true,
 			'type'  => true,
 			'value' => true,
 		);
-		echo wp_kses( $this->render_for_current_user(), $allowed_html );
+		echo wp_kses( $this->render_for_current_user( true ), $allowed_html );
 	}
 
 	public function shortcode() {
 		return $this->render_for_current_user();
 	}
 
-	private function render_for_current_user() {
+	private function render_for_current_user( $include_endpoint_payment_instructions = false ) {
 		if ( ! is_user_logged_in() ) {
 			return '<div class="c2eu-notice">' . esc_html__( 'Please sign in to view your membership.', 'click2eu-membership' ) . '</div>';
 		}
@@ -114,6 +130,12 @@ final class Click2EU_Dashboard {
 		$html .= '<header class="c2eu-dashboard__header"><p class="c2eu-dashboard__eyebrow">' . esc_html__( 'Candidate account', 'click2eu-membership' ) . '</p>';
 		$html .= '<h2 id="c2eu-membership-heading">' . esc_html__( 'My Membership', 'click2eu-membership' ) . '</h2></header>';
 		$html .= Click2EU_Payment_Notice::render_for_current_user();
+		if ( $include_endpoint_payment_instructions ) {
+			$payment_order = $this->eligible_payment_instruction_order( $user_id );
+			if ( $payment_order ) {
+				$html .= $this->render_payment_instructions( $payment_order );
+			}
+		}
 		$html .= $this->render_current_membership( $current, $user_id );
 		$html .= $this->render_renewal( $renewal, $user_id );
 		$html .= Click2EU_Upgrades::render_for( $current );
@@ -121,6 +143,152 @@ final class Click2EU_Dashboard {
 		$html .= '</section>';
 
 		return $html;
+	}
+
+	private function eligible_payment_instruction_order( $user_id ) {
+		$user_id = absint( $user_id );
+		if ( ! $user_id || $user_id !== get_current_user_id() || ! Click2EU_Auth::is_candidate() || ! function_exists( 'is_wc_endpoint_url' ) || ! is_wc_endpoint_url( self::ENDPOINT ) ) {
+			return false;
+		}
+		$effective = Click2EU_Category_Access::effective_membership( $user_id );
+		if ( ! is_wp_error( $effective ) || Click2EU_Memberships::has_active_membership( $user_id ) ) {
+			return false;
+		}
+
+		foreach ( Click2EU_Memberships::get_pending_initial_memberships( $user_id ) as $membership ) {
+			if ( 'pending' !== sanitize_key( $membership->status ) || ! empty( $membership->renewal_of_membership_id ) ) {
+				continue;
+			}
+			$order = $this->validated_initial_payment_order( $membership, $user_id );
+			if ( $order ) {
+				return $order;
+			}
+		}
+		return false;
+	}
+
+	private function validated_initial_payment_order( $membership, $user_id ) {
+		if ( ! $membership || (int) $membership->candidate_user_id !== (int) $user_id || ! empty( $membership->renewal_of_membership_id ) || ! function_exists( 'wc_get_order' ) ) {
+			return false;
+		}
+		$order = wc_get_order( absint( $membership->order_id ) );
+		if ( ! $order instanceof WC_Order || (int) $order->get_user_id() !== (int) $user_id || 'pending' !== $order->get_status() || 'bacs' !== $order->get_payment_method() || Click2EU_Orders::has_activation_conflict( $order ) ) {
+			return false;
+		}
+		$item = $order->get_item( absint( $membership->order_item_id ) );
+		return $item instanceof WC_Order_Item_Product
+			&& (int) $item->get_product_id() === (int) $membership->product_id
+			&& Click2EU_Config::is_membership_product( $membership->product_id ) ? $order : false;
+	}
+
+	private function render_payment_instructions( $order ) {
+		if ( ! $order instanceof WC_Order || (int) $order->get_user_id() !== get_current_user_id() || 'pending' !== $order->get_status() || 'bacs' !== $order->get_payment_method() ) {
+			return '';
+		}
+		$membership = Click2EU_Memberships::get_membership_for_order( $order->get_id() );
+		if ( ! $membership || 'pending' !== sanitize_key( $membership->status ) || ! empty( $membership->renewal_of_membership_id ) || (int) $membership->candidate_user_id !== get_current_user_id() || ! $this->validated_initial_payment_order( $membership, get_current_user_id() ) || Click2EU_Memberships::has_active_membership( get_current_user_id() ) ) {
+			return '';
+		}
+
+		$gateway       = $this->bacs_gateway();
+		$accounts      = $this->bacs_accounts( $gateway, $order->get_id() );
+		$bacs_settings = (array) get_option( 'woocommerce_bacs_settings', array() );
+		$instructions = $gateway && isset( $gateway->instructions ) ? (string) $gateway->instructions : (string) ( $bacs_settings['instructions'] ?? '' );
+		$whatsapp     = Click2EU_Settings::payment_support_whatsapp();
+		$order_number = (string) $order->get_order_number();
+		$proof_url    = $whatsapp ? $this->whatsapp_url( $whatsapp, "Hello Click2EU Support,\nI need to confirm my membership payment.\nOrder: #{$order_number}\nI would like to send my bank transfer receipt." ) : '';
+		$support_url  = $whatsapp ? $this->whatsapp_url( $whatsapp, 'Hello Click2EU Support, I need help with my membership payment.' ) : '';
+
+		$html  = '<section class="c2eu-payment-instructions" aria-labelledby="c2eu-payment-instructions-heading">';
+		$html .= '<header class="c2eu-payment-instructions__heading"><p class="c2eu-payment-instructions__eyebrow">' . esc_html__( 'Bank transfer', 'click2eu-membership' ) . '</p><h3 id="c2eu-payment-instructions-heading">' . esc_html__( 'Payment Instructions', 'click2eu-membership' ) . '</h3></header>';
+		$html .= '<p class="c2eu-payment-instructions__intro">' . esc_html__( 'Your membership payment is still pending. Please complete your bank transfer using the details below and send us your payment confirmation.', 'click2eu-membership' ) . '</p>';
+		$html .= '<div class="c2eu-payment-instructions__order"><h4>' . esc_html__( 'Order Information', 'click2eu-membership' ) . '</h4><dl class="c2eu-payment-instructions__details">';
+		$html .= $this->payment_detail_row( __( 'Order Number', 'click2eu-membership' ), '#' . $order_number );
+		$html .= '<div><dt>' . esc_html__( 'Exact Amount Due', 'click2eu-membership' ) . '</dt><dd>' . wp_kses_post( wc_price( $order->get_total(), array( 'currency' => $order->get_currency() ) ) ) . '</dd></div>';
+		$html .= $this->payment_detail_row( __( 'Order Currency', 'click2eu-membership' ), $order->get_currency() );
+		$html .= '</dl></div>';
+		$html .= '<div class="c2eu-payment-instructions__step"><span class="c2eu-payment-instructions__step-number" aria-hidden="true">1</span><div><h4>' . esc_html__( 'Complete Bank Transfer', 'click2eu-membership' ) . '</h4>';
+		if ( $accounts ) {
+			foreach ( $accounts as $index => $account ) {
+				$html .= $this->render_bacs_account( $account, $index, count( $accounts ) );
+			}
+		} else {
+			$html .= '<p class="c2eu-payment-instructions__unavailable">' . esc_html__( 'Bank transfer details are temporarily unavailable. Please view your order or contact support before making a payment.', 'click2eu-membership' ) . '</p>';
+		}
+		if ( '' !== trim( wp_strip_all_tags( $instructions ) ) ) {
+			$html .= '<div class="c2eu-payment-instructions__gateway-instructions">' . wp_kses_post( wpautop( wptexturize( $instructions ) ) ) . '</div>';
+		}
+		$html .= '<p class="c2eu-payment-instructions__reference">' . esc_html__( 'Please include your order number as the payment reference when making the transfer.', 'click2eu-membership' ) . '</p></div></div>';
+		$html .= '<div class="c2eu-payment-instructions__step"><span class="c2eu-payment-instructions__step-number" aria-hidden="true">2</span><div><h4>' . esc_html__( 'Send Payment Confirmation', 'click2eu-membership' ) . '</h4><p>' . esc_html__( 'After completing the bank transfer, please send a screenshot or receipt of your transaction through WhatsApp so our team can verify your payment.', 'click2eu-membership' ) . '</p>';
+		if ( $proof_url ) {
+			$html .= '<a class="c2eu-payment-instructions__whatsapp" href="' . esc_url( $proof_url ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Send Payment Proof via WhatsApp', 'click2eu-membership' ) . '</a>';
+		}
+		$html .= '</div></div><div class="c2eu-payment-instructions__support"><h4>' . esc_html__( 'Payment Support', 'click2eu-membership' ) . '</h4><p>' . esc_html__( 'Need help with your payment? Contact our support team on WhatsApp.', 'click2eu-membership' ) . '</p><div class="c2eu-payment-instructions__actions">';
+		if ( $support_url ) {
+			$html .= '<a class="c2eu-payment-instructions__support-link" href="' . esc_url( $support_url ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Contact Payment Support', 'click2eu-membership' ) . '</a>';
+		} else {
+			$html .= '<span class="c2eu-payment-instructions__support-fallback">' . esc_html__( 'WhatsApp payment support is not currently configured.', 'click2eu-membership' ) . '</span>';
+		}
+		$html .= '<a class="c2eu-payment-instructions__order-link" href="' . esc_url( $order->get_view_order_url() ) . '">' . esc_html__( 'View Order', 'click2eu-membership' ) . '</a></div></div>';
+		$html .= '<p class="c2eu-payment-instructions__final">' . esc_html__( 'Your membership will be activated only after our team verifies your payment.', 'click2eu-membership' ) . '</p></section>';
+		return $html;
+	}
+
+	private function bacs_gateway() {
+		if ( ! function_exists( 'WC' ) || ! WC()->payment_gateways() ) {
+			return null;
+		}
+		$gateways = WC()->payment_gateways()->payment_gateways();
+		return isset( $gateways['bacs'] ) && $gateways['bacs'] instanceof WC_Gateway_BACS ? $gateways['bacs'] : null;
+	}
+
+	private function bacs_accounts( $gateway, $order_id ) {
+		$accounts = $gateway && isset( $gateway->account_details ) ? (array) $gateway->account_details : (array) get_option( 'woocommerce_bacs_accounts', array() );
+		$accounts = apply_filters( 'woocommerce_bacs_accounts', $accounts, absint( $order_id ) );
+		return array_values( array_filter( (array) $accounts, static function ( $account ) {
+			$account = (array) $account;
+			foreach ( array( 'bank_name', 'account_name', 'account_number', 'sort_code', 'iban', 'bic' ) as $key ) {
+				if ( '' !== trim( (string) ( $account[ $key ] ?? '' ) ) ) {
+					return true;
+				}
+			}
+			return false;
+		} ) );
+	}
+
+	private function render_bacs_account( $account, $index, $total ) {
+		$account = (array) $account;
+		$title   = $total > 1 ? sprintf( __( 'Bank Account %d', 'click2eu-membership' ), $index + 1 ) : __( 'Bank Account', 'click2eu-membership' );
+		$fields  = array(
+			'bank_name'     => __( 'Bank Name', 'click2eu-membership' ),
+			'account_name'  => __( 'Account Holder Name', 'click2eu-membership' ),
+			'account_number' => __( 'Account Number', 'click2eu-membership' ),
+			'iban'          => __( 'IBAN', 'click2eu-membership' ),
+			'bic'           => __( 'BIC / SWIFT', 'click2eu-membership' ),
+			'sort_code'     => __( 'Sort Code', 'click2eu-membership' ),
+		);
+		$html = '<section class="c2eu-payment-instructions__account"><h5>' . esc_html( $title ) . '</h5><dl class="c2eu-payment-instructions__bank-details">';
+		foreach ( $fields as $key => $label ) {
+			$value = trim( (string) ( $account[ $key ] ?? '' ) );
+			if ( '' === $value ) {
+				continue;
+			}
+			$html .= '<div><dt>' . esc_html( $label ) . '</dt><dd><span>' . esc_html( wp_unslash( $value ) ) . '</span>';
+			if ( in_array( $key, array( 'account_number', 'iban' ), true ) ) {
+				$html .= '<button type="button" class="c2eu-payment-instructions__copy" data-copy-value="' . esc_attr( wp_unslash( $value ) ) . '" data-copy-label="' . esc_attr( $label ) . '" aria-label="' . esc_attr( sprintf( __( 'Copy %s', 'click2eu-membership' ), $label ) ) . '" aria-live="polite">' . esc_html__( 'Copy', 'click2eu-membership' ) . '</button>';
+			}
+			$html .= '</dd></div>';
+		}
+		return $html . '</dl></section>';
+	}
+
+	private function payment_detail_row( $label, $value ) {
+		return '<div><dt>' . esc_html( $label ) . '</dt><dd>' . esc_html( $value ) . '</dd></div>';
+	}
+
+	private function whatsapp_url( $number, $message ) {
+		$number = Click2EU_Settings::normalize_whatsapp_number( $number );
+		return $number ? 'https://wa.me/' . $number . '?text=' . rawurlencode( $message ) : '';
 	}
 
 	private function render_current_membership( $membership, $user_id ) {

@@ -1,5 +1,15 @@
-Click2EU Membership (v0.9.1)
+Click2EU Membership (v0.9.2)
 =======================================
+
+v0.9.2 PENDING BACS PAYMENT INSTRUCTIONS:
+- Adds an endpoint-only Payment Instructions card below the existing status
+  notice for ownership-validated Pending payment initial BACS orders.
+- Reads the exact order total/currency and all configured WooCommerce BACS bank
+  accounts and instructions without changing checkout or payment state.
+- Adds an optional Payment Support WhatsApp Number setting with validated wa.me
+  proof/support links and preserves every existing mapping and policy value.
+- Adds accessible copy controls for account numbers and IBAN values with a
+  dependency-free, progressively enhanced frontend script.
 
 v0.9.1 CONTEXTUAL MEMBERSHIP NOTICES:
 - Limits the Active success notice to 24 hours from its UTC `activated_at`

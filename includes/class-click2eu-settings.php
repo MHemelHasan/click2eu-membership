@@ -47,6 +47,7 @@ final class Click2EU_Settings {
 				'paid_resume_submit'   => 1,
 				'paid_applications'    => 1,
 			),
+			'payment_support_whatsapp' => '',
 		);
 	}
 
@@ -64,6 +65,20 @@ final class Click2EU_Settings {
 	public static function page_url( $key ) {
 		$page_id = self::page_id( $key );
 		return $page_id ? get_permalink( $page_id ) : '';
+	}
+
+	public static function payment_support_whatsapp() {
+		$settings = self::all();
+		return self::normalize_whatsapp_number( $settings['payment_support_whatsapp'] ?? '' );
+	}
+
+	public static function normalize_whatsapp_number( $value ) {
+		$value = trim( (string) $value );
+		if ( '' === $value || ! preg_match( '/^[+0-9\s().-]+$/', $value ) ) {
+			return '';
+		}
+		$digits = preg_replace( '/\D+/', '', $value );
+		return preg_match( '/^[1-9][0-9]{7,14}$/', $digits ) ? $digits : '';
 	}
 
 	public static function page_is_valid( $page_id ) {
@@ -96,7 +111,8 @@ final class Click2EU_Settings {
 
 	public function sanitize( $input ) {
 		$input = is_array( $input ) ? $input : array();
-		$clean = array( 'pages' => array(), 'policy' => self::defaults()['policy'] );
+		$existing = self::all();
+		$clean = array( 'pages' => array(), 'policy' => self::defaults()['policy'], 'payment_support_whatsapp' => '' );
 		foreach ( self::page_definitions() as $key => $definition ) {
 			$page_id = absint( $input['pages'][ $key ] ?? 0 );
 			if ( $page_id && ! self::page_is_valid( $page_id ) ) {
@@ -134,6 +150,12 @@ final class Click2EU_Settings {
 			add_settings_error( self::OPTION, 'resume_route_conflict', __( 'Submit Resume must be distinct from the read-only Candidate Dashboard / My Resumes page.', 'click2eu-membership' ) );
 			$clean['pages']['submit_resume'] = 0;
 		}
+		$submitted_whatsapp = sanitize_text_field( wp_unslash( $input['payment_support_whatsapp'] ?? '' ) );
+		$clean['payment_support_whatsapp'] = self::normalize_whatsapp_number( $submitted_whatsapp );
+		if ( '' !== trim( $submitted_whatsapp ) && ! $clean['payment_support_whatsapp'] ) {
+			add_settings_error( self::OPTION, 'invalid_payment_support_whatsapp', __( 'Payment Support WhatsApp Number must be a valid international number, including country code.', 'click2eu-membership' ) );
+			$clean['payment_support_whatsapp'] = self::normalize_whatsapp_number( $existing['payment_support_whatsapp'] ?? '' );
+		}
 		return $clean;
 	}
 
@@ -167,8 +189,11 @@ final class Click2EU_Settings {
 			echo '<p><label><input type="checkbox" checked disabled> ' . esc_html( $label ) . '</label><input type="hidden" name="' . esc_attr( self::OPTION ) . '[policy][' . esc_attr( $key ) . ']" value="1"></p>';
 		}
 		echo '<p><strong>' . esc_html__( 'Candidate login:', 'click2eu-membership' ) . '</strong> ' . esc_html__( 'Join Us when unpaid or Pending; Candidate Dashboard when Active.', 'click2eu-membership' ) . '</p></fieldset>';
+		echo '<h2>' . esc_html__( 'C. Payment Support', 'click2eu-membership' ) . '</h2><table class="form-table" role="presentation"><tr><th scope="row"><label for="c2eu-payment-support-whatsapp">' . esc_html__( 'Payment Support WhatsApp Number', 'click2eu-membership' ) . '</label></th><td>';
+		echo '<input class="regular-text" id="c2eu-payment-support-whatsapp" name="' . esc_attr( self::OPTION ) . '[payment_support_whatsapp]" type="tel" inputmode="tel" autocomplete="tel" value="' . esc_attr( $settings['payment_support_whatsapp'] ?? '' ) . '" placeholder="+8801XXXXXXXXX">';
+		echo '<p class="description">' . esc_html__( 'Optional. Enter the international number with country code. It is normalized to digits only for wa.me links.', 'click2eu-membership' ) . '</p></td></tr></table>';
 		submit_button();
-		echo '</form><hr><h2>' . esc_html__( 'C. Integration Diagnostics', 'click2eu-membership' ) . '</h2>';
+		echo '</form><hr><h2>' . esc_html__( 'D. Integration Diagnostics', 'click2eu-membership' ) . '</h2>';
 		$this->render_diagnostics();
 		echo '</div>';
 	}
