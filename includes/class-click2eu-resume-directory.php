@@ -86,7 +86,7 @@ final class Click2EU_Resume_Directory {
 
 		wp_enqueue_style(
 			'click2eu-resume-directory',
-			plugins_url( 'assets/resume-directory.css', dirname( __FILE__ ) ),
+			plugins_url( '../assets/resume-directory.css', __FILE__ ),
 			array(),
 			$ver
 		);
@@ -130,7 +130,7 @@ final class Click2EU_Resume_Directory {
 			$ver      = file_exists( $css_path ) ? filemtime( $css_path ) : Click2EU_Config::VERSION;
 			wp_enqueue_style(
 				'click2eu-resume-directory',
-				plugins_url( 'assets/resume-directory.css', dirname( __FILE__ ) ),
+				plugins_url( '../assets/resume-directory.css', __FILE__ ),
 				array(),
 				$ver
 			);

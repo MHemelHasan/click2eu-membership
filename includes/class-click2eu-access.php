@@ -67,7 +67,13 @@ final class Click2EU_Access {
 	}
 
 	private function redirect_guest_to_auth( $error ) {
-		$auth = Click2EU_Auth::cariera_auth_url();
+		// For Resume Directory, preserve the current URL as a return destination.
+		$redirect_to = '';
+		if ( Click2EU_Route_Policy::is_resume_directory_route() ) {
+			$current = home_url( wp_unslash( $_SERVER['REQUEST_URI'] ?? '/' ) );
+			$redirect_to = wp_validate_redirect( $current, '' );
+		}
+		$auth = Click2EU_Auth::cariera_auth_url( $redirect_to );
 		if ( ! $auth || self::is_current_url( $auth ) ) {
 			$this->die_denial( $error );
 		}

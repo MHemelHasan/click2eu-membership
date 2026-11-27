@@ -6,13 +6,21 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 final class Click2EU_Auth {
 	public static function is_candidate( $user = null ) {
-		$user = $user instanceof WP_User ? $user : wp_get_current_user();
-		return $user->exists() && in_array( 'candidate', (array) $user->roles, true );
+		if ( is_numeric( $user ) ) {
+			$user = get_user_by( 'id', absint( $user ) );
+		} elseif ( ! ( $user instanceof WP_User ) ) {
+			$user = wp_get_current_user();
+		}
+		return $user && $user->exists() && in_array( 'candidate', (array) $user->roles, true );
 	}
 
 	public static function is_employer( $user = null ) {
-		$user = $user instanceof WP_User ? $user : wp_get_current_user();
-		return $user->exists() && in_array( 'employer', (array) $user->roles, true );
+		if ( is_numeric( $user ) ) {
+			$user = get_user_by( 'id', absint( $user ) );
+		} elseif ( ! ( $user instanceof WP_User ) ) {
+			$user = wp_get_current_user();
+		}
+		return $user && $user->exists() && in_array( 'employer', (array) $user->roles, true );
 	}
 
 	/**
