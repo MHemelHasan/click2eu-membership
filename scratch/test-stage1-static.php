@@ -106,7 +106,7 @@ test_assert( 'Calls manage_options for admin', strpos( $dir, 'manage_options' ) 
 test_assert( 'Fail-closed for plain employer', strpos( $dir, 'is_employer' ) !== false );
 
 // Query
-test_assert( 'query_resumes() restricts to publish status', strpos( $dir, "'post_status' => 'publish'" ) !== false || strpos( $dir, '"post_status" => "publish"' ) !== false );
+test_assert( 'query_resumes() restricts to publish status', (bool) preg_match( "/'post_status'\\s*=>\\s*'publish'/", $dir ) );
 test_assert( 'query_resumes() uses active_candidate_ids()', strpos( $dir, 'active_candidate_ids' ) !== false );
 test_assert( 'query_resumes() validates candidate role', strpos( $dir, 'is_candidate' ) !== false );
 test_assert( 'query_resumes() uses POST_TYPE constant', strpos( $dir, 'self::POST_TYPE' ) !== false );

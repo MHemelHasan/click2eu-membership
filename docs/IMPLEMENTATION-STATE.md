@@ -14,50 +14,88 @@ renewal, upgrade, expiration, payment-notice and notification behavior.
 | Baseline plugin version | 0.9.2 |
 | Verified baseline commit | `c74c3727464616021f7e41a7e874c36dafa03680` |
 | Baseline branch | `master` / `origin/master` |
-| Current implementation branch | `staging` / `origin/staging` |
-| Previous checkpoint commit | `e08069a7fb3140173a2a8e6bf0a7ef3114984265` |
-| Overall completion | 10% — Stage 0 source + LocalWP DB/runtime audit completed; no product code implemented |
+| Implementation branch | `staging` / `origin/staging` |
+| Previous checkpoint commit | `b90efe439c09253ec382032210e060943bd5bdf8` |
+| Overall completion | 35% — Stage 0 audit and Stage 1 Resume Directory implementation fully completed and verified |
 
 ## Current stage
 
-**Stage 0 — Repository, LocalWP Database, and WordPress Runtime Audit: COMPLETED (with documented Cariera license & registration-field blockers).**
+**Stage 1 — Resume Directory Implementation: COMPLETED.**
 
-The approved plan was read completely. Its stated reviewed baseline (v0.7.4
-on `develop`) is historical; the authoritative current baseline is v0.9.2 on
-the synchronized `master`. The old `develop` branch is not being used.
+Next stage: **Stage 2 — Employer Verification Workflow, Persistence & Centralized Authorization.**
 
 ## Completed tasks
 
+### Stage 0 (Audit & Diagnostics)
 - **PASS** Repository root verified: `wp-content/plugins/click2eu-membership`.
-- **PASS** Local `master` was clean and exactly matched `origin/master` at
-  `c74c372` before `staging` was created.
-- **PASS** New `staging` branch was created from the verified master baseline
-  and pushed to `origin/staging`.
-- **PASS** Main header, bootstrap constant and config constant all report
-  plugin version `0.9.2`.
-- **PASS** Approved source-of-truth plan read:
-  `docs/click2eu-employer-verification-resume-plan.md`.
-- **PASS** Parent theme, child theme, Cariera Core/Addons and WP Job Manager
-  sources inspected without modifying vendor/theme files.
-- **PASS** Actual Invite Candidate display callback identified in
-  `Cariera_Core\Extensions\Resume\Invite_Candidate`:
-  `display_invite_candidate()` is attached at priority 100 to
-  `single_resume_meta_end` for V1 and at priority 50 to
-  `cariera_candidate_detail_actions` for V2/V3.
-- **PASS** Existing Employer bypasses located in `Click2EU_Route_Policy` and
-  `Click2EU_Access`; they are role-only today and require Stage 2 conversion
-  to approved-employer checks.
-- **PASS** Child theme has only stylesheet enqueueing; no relevant custom
-  registration or Resume integration source was found.
-- **PASS** LocalWP database diagnosis completed: `site-statuses.json` showed
-  site `iaVgU4zHl` (`Click2Eu`) was `halted` and no LocalWP services were
-  running. Starting LocalWP's bundled `mysqld.exe` (MySQL 8.4.0 on port
-  `10005` with `--defaults-file=.../run/iaVgU4zHl/conf/mysql/my.cnf`) restored
-  DB connectivity cleanly without modifying data (`mysqld is alive`; later
-  shut down cleanly via `mysqladmin shutdown`).
-- **PASS** Read-only WordPress runtime & database audit completed (PHP 8.4.27
-  with site `PHPRC`, WP 7.1.4, DB `local`, prefix `wp_`).
-- **PASS** PHP 8.4 syntax lint across all 19 `.php` files in
+- **PASS** Local `master` clean and synchronized with `origin/master` at `c74c372`.
+- **PASS** `staging` branch created from verified master baseline and tracked with `origin/staging`.
+- **PASS** Main header, bootstrap constant, and config constant report plugin version `0.9.2`.
+- **PASS** Approved source-of-truth plan read: `docs/click2eu-employer-verification-resume-plan.md`.
+- **PASS** Cariera parent/child themes, Cariera Core/Addons, and WP Job Manager sources audited.
+- **PASS** Exact Invite Candidate display callbacks identified in `Cariera_Core\Extensions\Resume\Invite_Candidate` (priority 100 on `single_resume_meta_end` for V1; priority 50 on `cariera_candidate_detail_actions` for V2/V3).
+- **PASS** LocalWP DB diagnosed and restored cleanly (MySQL 8.4.0 on port 10005, DB `local`).
+- **PASS** Registration fields audited: Company Name and Registration Number absent in local environment.
+
+### Stage 1 (Resume Directory Implementation)
+- **PASS** Shortcode `[click2eu_resume_directory]` implemented in new class `Click2EU_Resume_Directory` (`includes/class-click2eu-resume-directory.php`).
+- **PASS** Plugin bootstrap updated: required in `click2eu-membership.php` and instantiated during plugin bootstrap.
+- **PASS** Fail-closed authorization guard implemented in `Click2EU_Resume_Directory::get_access_state()`:
+  - Administrator: allowed.
+  - Approved Employer (`Click2EU_Auth::is_approved_employer()`): allowed.
+  - Pending Employer: dedicated verification-pending message.
+  - Rejected / Suspended Employer: dedicated access-restricted message.
+  - Candidate: dedicated candidate access denied message with CTA to Candidate Dashboard.
+  - Guest: dedicated sign-in required message with CTA to Cariera auth URL.
+  - Other: generic access denied message.
+- **PASS** Centralized helper `Click2EU_Auth::is_approved_employer()` added to `includes/class-click2eu-auth.php` (fail-closed, delegating to `Click2EU_Employer_Verification::is_approved()` when available in Stage 2, or checking `_click2eu_employer_verification_status` meta). Accepts `WP_User`, user ID int, or null for current user.
+- **PASS** Helpers `Click2EU_Auth::is_candidate()` and `Click2EU_Auth::is_employer()` updated to accept numeric user IDs in addition to `WP_User` objects.
+- **PASS** `Click2EU_Auth::cariera_auth_url( $redirect_to = '' )` updated to accept an optional redirect destination URL.
+- **PASS** Settings mapping added in `includes/class-click2eu-settings.php`: `resume_directory` mapped to option `resume_manager_resumes_page_id` (Page ID `114`) and shortcode `click2eu_resume_directory`.
+- **PASS** Route policy integration in `includes/class-click2eu-route-policy.php`:
+  - `is_resume_directory_route()` added to identify Page 114 / shortcode.
+  - `is_protected_html_route()` includes `resume_directory` mapped page and `click2eu_resume_directory` shortcode.
+  - `authorize_current_html_route()` redirects unauthenticated guests on resume directory, while allowing logged-in candidates/employers to view the themed in-page access state notices.
+- **PASS** Endpoint protections in `includes/class-click2eu-access.php`:
+  - `guard_listing_ajax()`: blocks `resume_manager_get_resumes` AJAX with 403 unless administrator or approved employer.
+  - `guard_rest()`: blocks GET on `/resumes` REST route with 403 unless administrator or approved employer.
+  - `redirect_guest_to_auth()`: passes current resume directory URL as return destination.
+- **PASS** Data constraints and N+1 query prevention:
+  - `post_type = resume`, `post_status = publish`.
+  - Author restricted to `Click2EU_Route_Policy::active_candidate_ids()`, strictly verified to have the `candidate` role (administrators and non-candidates excluded).
+  - Short-circuits with `post__in => array( 0 )` if active candidates list is empty.
+  - Enabled `update_post_meta_cache => true` and `update_post_term_cache => true` to load cards in batched SQL queries without N+1 overhead.
+- **PASS** Server-side filters with namespaced GET parameters:
+  - `c2eu_resume_keyword`: keyword search across post title, content, excerpt, candidate title/name, and taxonomy terms via scoped `posts_search` filter.
+  - `c2eu_resume_location`: meta query matching `_candidate_location`, `geolocation_formatted_address`, `geolocation_state_long`.
+  - `c2eu_resume_category`: tax_query on `resume_category` taxonomy.
+  - `c2eu_resume_skill`: tax_query on `resume_skill` taxonomy.
+  - `c2eu_paged`: pagination parameter.
+  - Filter sanitization via `sanitize_text_field()` and `wp_unslash()`.
+  - Filter persistence across pagination via `paginate_links()` with `add_args`.
+  - Reset action cleanly returning to base URL.
+  - Empty-state rendering when no candidates match or none exist.
+- **PASS** Resume card layout:
+  - Photo: candidate photo helper, `_candidate_photo` meta, avatar, or clean SVG placeholder.
+  - Candidate display name linking to actual WordPress permalink (`get_permalink()`).
+  - Professional title (`_candidate_title`).
+  - Location badge (`_candidate_location`).
+  - Category badge (`resume_category`).
+  - Skills pills (`resume_skill`, capped at 5 with `+N` indicator).
+  - Public summary excerpt (trimmed to 24 words).
+  - View Profile button (`get_permalink()`).
+  - PRIVACY: Candidate email (`_candidate_email`, `user_email`) and phone details are never rendered or leaked.
+- **PASS** Namespaced CSS in `assets/resume-directory.css`:
+  - Scoped strictly to `.c2eu-resume-directory`.
+  - Responsive grid layout (desktop, tablet, mobile).
+  - Notice callouts for all access states (`guest`, `candidate`, `pending`, `restricted`, `denied`).
+  - Conditional asset loading: only loaded on resume directory page or when shortcode is on the page.
+- **PASS** Database update: Page ID `114` (`Resumes`, `/resumes/`) updated in `wp_posts` from `[resumes]` to `[click2eu_resume_directory]`. Verified in MySQL.
+- **PASS** Comprehensive test suites:
+  - PHP syntax lint on all 22 plugin files: PASS (0 errors).
+  - Static assertion suite `scratch/test-stage1-static.php`: 74/74 PASS.
+  - Functional mock suite `scratch/test-stage1-mock.php`: 28/28 PASS.
+  - Total: 102/102 test assertions passing.
   `click2eu-membership/` (`FAIL=0`).
 
 ## Current source and runtime findings

@@ -8,7 +8,7 @@
   `c74c3727464616021f7e41a7e874c36dafa03680`
 - Baseline plugin version: 0.9.2
 - Implementation branch: `staging`, pushed and tracking `origin/staging`
-- Previous checkpoint commit: `e08069a7fb3140173a2a8e6bf0a7ef3114984265`
+- Previous checkpoint commit: `b90efe439c09253ec382032210e060943bd5bdf8`
 - Never use the stale/diverged `develop` branch as this implementation base.
 - Do not edit themes or vendor plugins. Work only in this repository.
 
@@ -18,6 +18,46 @@
 2. This file
 3. Latest entry in `docs/IMPLEMENTATION-LOG.md`
 4. `docs/click2eu-employer-verification-resume-plan.md` in full
+
+## Stage 1 completed: Resume Directory
+
+Stage 1 is complete and tested:
+- **Resume Directory class & shortcode:** `Click2EU_Resume_Directory` (`includes/class-click2eu-resume-directory.php`) implements `[click2eu_resume_directory]`.
+- **Fail-closed access control:**
+  - Admin: allowed.
+  - Approved Employer: allowed (`Click2EU_Auth::is_approved_employer()`).
+  - Pending Employer: dedicated verification-pending message.
+  - Rejected/Suspended Employer: dedicated access-restricted message.
+  - Candidate: dedicated access-denied message (redirect to Candidate Dashboard).
+  - Guest: dedicated sign-in required message (redirect to Cariera auth URL, preserving return destination).
+- **Centralized authorization helper:** `Click2EU_Auth::is_approved_employer()` added; accepts `WP_User`, user ID int, or null for current user. Fails closed (returns false for all employers without verified approval). Ready for Stage 2 `Click2EU_Employer_Verification` integration.
+- **Data queries & N+1 prevention:** Restricts queries to `post_type = resume`, `post_status = publish`, and author strictly in `Click2EU_Route_Policy::active_candidate_ids()` who have the `candidate` role. Pre-caches post meta and taxonomy terms in batched SQL queries.
+- **Search & Filters:** Server-side filtering using namespaced GET parameters (`c2eu_resume_keyword`, `c2eu_resume_location`, `c2eu_resume_category`, `c2eu_resume_skill`). Pagination via `c2eu_paged` preserving all active filters. Clear/reset button and responsive empty states.
+- **Privacy:** Candidate photo, title, location, category, capped skills (5 max), and excerpt rendered. Candidate email (`_candidate_email`, `user_email`) and phone details are strictly omitted from output.
+- **Styling:** Scoped CSS in `assets/resume-directory.css` (`.c2eu-resume-directory`). Enqueued conditionally only on the resume directory page or when the shortcode is present.
+- **Endpoint protections:** AJAX (`resume_manager_get_resumes`) and REST (`GET /resumes`) fail closed with 403 unless the user is an administrator or approved employer.
+- **Page ID 114 updated in MySQL:** Content replaced from `[resumes]` to `[click2eu_resume_directory]`. Verified in database.
+- **Tests passing:**
+  - 22/22 PHP files syntax check clean.
+  - 74/74 assertions in `scratch/test-stage1-static.php` pass.
+  - 28/28 assertions in `scratch/test-stage1-mock.php` pass.
+
+## Next Stage: Stage 2 — Employer Verification Workflow
+
+The next task is **Stage 2**:
+1. Implement Employer Verification module (`includes/class-click2eu-employer-verification.php`).
+2. Manage user-meta keys:
+   - `_click2eu_employer_verification_status` (`pending`, `approved`, `rejected`, `suspended`)
+   - `_click2eu_company_name`
+   - `_click2eu_company_registration_number`
+   - `_click2eu_employer_verification_submitted_at`
+   - `_click2eu_employer_verification_reviewed_at`
+   - `_click2eu_employer_verification_reviewed_by`
+   - `_click2eu_employer_verification_admin_note`
+3. Prevent unapproved employers from logging in (`wp_authenticate_user` check).
+4. Implement Admin review screen under `WP Admin > Click2EU Memberships > Employer Verification`.
+5. Integrate registration form fields (resolve Company Name and Registration Number persistence).
+6. Convert role-only employer checks across the codebase to `Click2EU_Auth::is_approved_employer()`.
 
 ## Stage 0 completed
 

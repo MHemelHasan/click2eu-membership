@@ -98,7 +98,61 @@ resolve registration-field provenance before beginning Stage 1.
   inactive without `cariera_license_activated`).
 - Automated test harness: NOT TESTED (no repository harness present).
 
-**Next action:** Confirm with the site owner whether Company Name / Company
-Registration Number registration fields come from a separate live/staging
-snippet or should be newly implemented in `click2eu-membership` during Stage 2,
-then begin Stage 1 (fail-closed `[click2eu_resume_directory]`).
+**Next action:** Begin Stage 1 (fail-closed `[click2eu_resume_directory]`).
+
+## 2026-11-28 (Asia/Dhaka) — Stage 1 Resume Directory implementation
+
+**Stage:** Stage 1 — Resume Directory (`[click2eu_resume_directory]`).
+
+**Completed:**
+
+- Implemented new class `Click2EU_Resume_Directory` (`includes/class-click2eu-resume-directory.php`):
+  - Registered shortcode `[click2eu_resume_directory]`.
+  - Fail-closed access control states: allowed (Admin & Approved Employer), guest (Sign-in required notice with login CTA), candidate_denied (Employer-only notice with Candidate Dashboard CTA), pending (Verification-pending notice), rejected/suspended (Account restricted notice).
+  - Data query: published resumes only, author strictly in active Candidate user IDs (`Click2EU_Route_Policy::active_candidate_ids()`) with `candidate` role check (excludes admin/non-candidate accounts).
+  - N+1 database query prevention: pre-caches post meta and taxonomy terms in batched SQL queries.
+  - Namespaced server-side GET filters: `c2eu_resume_keyword`, `c2eu_resume_location`, `c2eu_resume_category`, `c2eu_resume_skill`, and `c2eu_paged`.
+  - Filter persistence across pagination via `paginate_links()` with `add_args`.
+  - Reset/clear action and responsive empty-result states.
+  - Resume card layout: photo (helper, meta, avatar, SVG placeholder), candidate name with single resume permalink, professional title (`_candidate_title`), location (`_candidate_location`), category badge, skills pills (capped at 5 with `+N` badge), public summary excerpt (24 words), and View Profile link.
+  - Privacy: candidate email and phone details strictly omitted from output.
+- Created namespaced CSS: `assets/resume-directory.css` (`.c2eu-resume-directory`), conditionally enqueued only on the resume directory page or when shortcode is present.
+- Added centralized authorization helper in `includes/class-click2eu-auth.php`:
+  - `Click2EU_Auth::is_approved_employer()`: fail-closed, delegating to `Click2EU_Employer_Verification::is_approved()` when available in Stage 2, or checking `_click2eu_employer_verification_status` meta.
+  - Updated `is_candidate()` and `is_employer()` to accept numeric user IDs.
+  - Updated `cariera_auth_url()` to accept an optional redirect destination URL.
+- Registered page mapping in `includes/class-click2eu-settings.php`: `resume_directory` mapped to `resume_manager_resumes_page_id` (Page 114) and shortcode `click2eu_resume_directory`.
+- Integrated Route Policy and Access guards:
+  - `Click2EU_Route_Policy`: added `is_resume_directory_route()` and mapped page protection. Unauthenticated guests are redirected to auth, while logged-in candidates/employers view the styled in-page state notices.
+  - `Click2EU_Access`: guarded AJAX (`resume_manager_get_resumes`) and REST (`GET /resumes`), rejecting unauthorized requests with 403.
+- Updated Page ID 114 (`Resumes`, `/resumes/`) in WordPress database (`wp_posts`): replaced `post_content` from `[resumes]` to `[click2eu_resume_directory]`. Verified in MySQL.
+- Verified plugin bootstrap: required and instantiated `Click2EU_Resume_Directory` in `click2eu-membership.php`.
+- Created and ran test suites:
+  - Static assertion test suite: `scratch/test-stage1-static.php` (74/74 PASS).
+  - Functional mock test suite: `scratch/test-stage1-mock.php` (28/28 PASS).
+  - PHP 8.4 syntax lint on all 22 plugin files: PASS (0 errors).
+
+**Files changed:**
+
+- `assets/resume-directory.css` (new)
+- `includes/class-click2eu-resume-directory.php` (new)
+- `includes/class-click2eu-auth.php`
+- `includes/class-click2eu-settings.php`
+- `includes/class-click2eu-route-policy.php`
+- `includes/class-click2eu-access.php`
+- `click2eu-membership.php`
+- `scratch/test-stage1-static.php` (new)
+- `scratch/test-stage1-mock.php` (new)
+- `docs/IMPLEMENTATION-STATE.md`
+- `docs/AGENT-HANDOFF.md`
+- `docs/IMPLEMENTATION-LOG.md`
+
+**Tests/evidence:**
+
+- PHP 8.4 syntax lint (22/22 files): PASS (`FAIL=0`).
+- Stage 1 static test suite (`scratch/test-stage1-static.php`): PASS (74/74 assertions).
+- Stage 1 mock functional test suite (`scratch/test-stage1-mock.php`): PASS (28/28 assertions).
+- Database Page 114 verification: PASS (`post_content = '[click2eu_resume_directory]'`).
+- Browser QA: BLOCKED (LocalWP HTTP halted, Cariera license inactive).
+
+**Next action:** Stage 2 — Employer verification workflow, registration field persistence, and admin review screen.
