@@ -1,0 +1,567 @@
+/**
+ * Click2EU Resume Directory Styles
+ * Namespace: .c2eu-resume-directory
+ */
+
+.c2eu-resume-directory {
+	font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+	color: #1e293b;
+	margin: 2rem 0;
+	box-sizing: border-box;
+}
+
+.c2eu-resume-directory *,
+.c2eu-resume-directory *::before,
+.c2eu-resume-directory *::after {
+	box-sizing: inherit;
+}
+
+/* -------------------------------------------------------------------------
+ * Notices / Access States
+ * ------------------------------------------------------------------------- */
+.c2eu-resume-notice {
+	max-width: 680px;
+	margin: 3rem auto;
+	padding: 2.5rem 2rem;
+	border-radius: 16px;
+	text-align: center;
+	background: #ffffff;
+	box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+	border: 1px solid #e2e8f0;
+}
+
+.c2eu-resume-notice__icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 72px;
+	height: 72px;
+	border-radius: 50%;
+	margin-bottom: 1.5rem;
+}
+
+.c2eu-resume-notice__title {
+	font-size: 1.5rem;
+	font-weight: 700;
+	color: #0f172a;
+	margin: 0 0 0.75rem;
+	line-height: 1.3;
+}
+
+.c2eu-resume-notice__text {
+	font-size: 1rem;
+	line-height: 1.6;
+	color: #64748b;
+	margin: 0 0 1.5rem;
+}
+
+.c2eu-resume-notice__actions {
+	display: flex;
+	justify-content: center;
+	gap: 1rem;
+	margin-top: 1.5rem;
+	flex-wrap: wrap;
+}
+
+/* Notice color variations */
+.c2eu-resume-notice--guest {
+	border-top: 4px solid #2563eb;
+}
+.c2eu-resume-notice--guest .c2eu-resume-notice__icon {
+	background: #eff6ff;
+	color: #2563eb;
+}
+
+.c2eu-resume-notice--candidate {
+	border-top: 4px solid #0284c7;
+}
+.c2eu-resume-notice--candidate .c2eu-resume-notice__icon {
+	background: #f0f9ff;
+	color: #0284c7;
+}
+
+.c2eu-resume-notice--pending {
+	border-top: 4px solid #d97706;
+}
+.c2eu-resume-notice--pending .c2eu-resume-notice__icon {
+	background: #fffbeb;
+	color: #d97706;
+}
+
+.c2eu-resume-notice--restricted,
+.c2eu-resume-notice--denied {
+	border-top: 4px solid #dc2626;
+}
+.c2eu-resume-notice--restricted .c2eu-resume-notice__icon,
+.c2eu-resume-notice--denied .c2eu-resume-notice__icon {
+	background: #fef2f2;
+	color: #dc2626;
+}
+
+/* -------------------------------------------------------------------------
+ * Buttons
+ * ------------------------------------------------------------------------- */
+.c2eu-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+	font-family: inherit;
+	font-size: 0.9375rem;
+	font-weight: 600;
+	padding: 0.625rem 1.25rem;
+	border-radius: 8px;
+	text-decoration: none;
+	cursor: pointer;
+	transition: all 0.15s ease-in-out;
+	border: 1px solid transparent;
+	line-height: 1.4;
+}
+
+.c2eu-btn--primary {
+	background-color: #2563eb;
+	color: #ffffff !important;
+	border-color: #2563eb;
+}
+.c2eu-btn--primary:hover {
+	background-color: #1d4ed8;
+	border-color: #1d4ed8;
+	color: #ffffff !important;
+}
+
+.c2eu-btn--secondary {
+	background-color: #f1f5f9;
+	color: #334155 !important;
+	border-color: #cbd5e1;
+}
+.c2eu-btn--secondary:hover {
+	background-color: #e2e8f0;
+	color: #1e293b !important;
+}
+
+.c2eu-btn--reset {
+	background-color: transparent;
+	color: #64748b !important;
+	border-color: #e2e8f0;
+}
+.c2eu-btn--reset:hover {
+	background-color: #f8fafc;
+	color: #0f172a !important;
+	border-color: #cbd5e1;
+}
+
+.c2eu-btn--view-profile {
+	width: 100%;
+	background-color: #f8fafc;
+	color: #2563eb !important;
+	border-color: #e2e8f0;
+	padding: 0.6rem 1rem;
+	font-size: 0.875rem;
+}
+.c2eu-btn--view-profile:hover {
+	background-color: #2563eb;
+	color: #ffffff !important;
+	border-color: #2563eb;
+}
+
+/* -------------------------------------------------------------------------
+ * Filter Form
+ * ------------------------------------------------------------------------- */
+.c2eu-resume-filter-wrap {
+	background: #ffffff;
+	border: 1px solid #e2e8f0;
+	border-radius: 12px;
+	padding: 1.5rem;
+	margin-bottom: 2rem;
+	box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+}
+
+.c2eu-resume-filters__row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 1rem;
+	align-items: flex-end;
+}
+
+.c2eu-form-group {
+	display: flex;
+	flex-direction: column;
+	gap: 0.375rem;
+	flex: 1 1 200px;
+}
+
+.c2eu-form-group--keyword {
+	flex: 2 1 240px;
+}
+
+.c2eu-form-group--location {
+	flex: 1.5 1 200px;
+}
+
+.c2eu-form-group--category,
+.c2eu-form-group--skill {
+	flex: 1 1 180px;
+}
+
+.c2eu-form-group--submit {
+	flex: 0 0 auto;
+	flex-direction: row;
+	align-items: center;
+	gap: 0.5rem;
+	margin-top: auto;
+}
+
+.c2eu-form-label {
+	font-size: 0.8125rem;
+	font-weight: 600;
+	color: #475569;
+	text-transform: uppercase;
+	letter-spacing: 0.025em;
+}
+
+.c2eu-input-icon-wrap {
+	position: relative;
+	display: flex;
+	align-items: center;
+}
+
+.c2eu-input-icon {
+	position: absolute;
+	left: 0.875rem;
+	color: #94a3b8;
+	pointer-events: none;
+}
+
+.c2eu-form-input {
+	width: 100%;
+	padding: 0.625rem 0.875rem 0.625rem 2.5rem;
+	font-family: inherit;
+	font-size: 0.9375rem;
+	color: #1e293b;
+	background-color: #f8fafc;
+	border: 1px solid #cbd5e1;
+	border-radius: 8px;
+	transition: all 0.15s ease-in-out;
+}
+
+.c2eu-form-select {
+	width: 100%;
+	padding: 0.625rem 0.875rem;
+	font-family: inherit;
+	font-size: 0.9375rem;
+	color: #1e293b;
+	background-color: #f8fafc;
+	border: 1px solid #cbd5e1;
+	border-radius: 8px;
+	transition: all 0.15s ease-in-out;
+	cursor: pointer;
+}
+
+.c2eu-form-input:focus,
+.c2eu-form-select:focus {
+	outline: none;
+	background-color: #ffffff;
+	border-color: #2563eb;
+	box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+/* -------------------------------------------------------------------------
+ * Results Header
+ * ------------------------------------------------------------------------- */
+.c2eu-resume-results-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 1.5rem;
+	padding-bottom: 0.75rem;
+	border-bottom: 1px solid #e2e8f0;
+}
+
+.c2eu-resume-count {
+	font-size: 0.9375rem;
+	font-weight: 600;
+	color: #475569;
+}
+
+/* -------------------------------------------------------------------------
+ * Empty State
+ * ------------------------------------------------------------------------- */
+.c2eu-resume-empty {
+	text-align: center;
+	padding: 3.5rem 1.5rem;
+	background: #ffffff;
+	border: 1px dashed #cbd5e1;
+	border-radius: 12px;
+	margin: 1.5rem 0;
+}
+
+.c2eu-resume-empty__icon {
+	display: inline-flex;
+	color: #94a3b8;
+	margin-bottom: 1rem;
+}
+
+.c2eu-resume-empty__title {
+	font-size: 1.25rem;
+	font-weight: 700;
+	color: #1e293b;
+	margin: 0 0 0.5rem;
+}
+
+.c2eu-resume-empty__text {
+	font-size: 0.9375rem;
+	color: #64748b;
+	max-width: 480px;
+	margin: 0 auto 1.5rem;
+	line-height: 1.5;
+}
+
+.c2eu-resume-empty__actions {
+	display: flex;
+	justify-content: center;
+}
+
+/* -------------------------------------------------------------------------
+ * Resume Grid & Cards
+ * ------------------------------------------------------------------------- */
+.c2eu-resume-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+	gap: 1.5rem;
+	margin-bottom: 2rem;
+}
+
+.c2eu-resume-card {
+	background: #ffffff;
+	border: 1px solid #e2e8f0;
+	border-radius: 12px;
+	transition: all 0.2s ease-in-out;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+}
+
+.c2eu-resume-card:hover {
+	transform: translateY(-2px);
+	border-color: #cbd5e1;
+	box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 4px 6px -2px rgba(15, 23, 42, 0.03);
+}
+
+.c2eu-resume-card__inner {
+	padding: 1.5rem;
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 auto;
+}
+
+.c2eu-resume-card__header {
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+	margin-bottom: 1rem;
+}
+
+.c2eu-resume-card__photo-wrap {
+	flex: 0 0 60px;
+	width: 60px;
+	height: 60px;
+	border-radius: 50%;
+	overflow: hidden;
+	background-color: #f1f5f9;
+	border: 2px solid #e2e8f0;
+}
+
+.c2eu-resume-card__photo {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+
+.c2eu-resume-card__photo-fallback {
+	width: 100%;
+	height: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: #94a3b8;
+}
+
+.c2eu-resume-card__identity {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.c2eu-resume-card__name {
+	font-size: 1.125rem;
+	font-weight: 700;
+	margin: 0 0 0.25rem;
+	line-height: 1.3;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.c2eu-resume-card__name-link {
+	color: #0f172a;
+	text-decoration: none;
+	transition: color 0.15s ease-in-out;
+}
+.c2eu-resume-card__name-link:hover {
+	color: #2563eb;
+}
+
+.c2eu-resume-card__occupation {
+	font-size: 0.875rem;
+	font-weight: 600;
+	color: #2563eb;
+	margin-bottom: 0.25rem;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.c2eu-resume-card__location {
+	display: flex;
+	align-items: center;
+	gap: 0.25rem;
+	font-size: 0.8125rem;
+	color: #64748b;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.c2eu-resume-card__location svg {
+	flex-shrink: 0;
+	color: #94a3b8;
+}
+
+/* Badges */
+.c2eu-resume-card__categories,
+.c2eu-resume-card__skills {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.375rem;
+	margin-bottom: 0.75rem;
+}
+
+.c2eu-badge {
+	display: inline-block;
+	padding: 0.2rem 0.5rem;
+	font-size: 0.75rem;
+	font-weight: 600;
+	border-radius: 4px;
+	line-height: 1.2;
+}
+
+.c2eu-badge--category {
+	background-color: #eff6ff;
+	color: #1d4ed8;
+	border: 1px solid #bfdbfe;
+}
+
+.c2eu-badge--skill {
+	background-color: #f8fafc;
+	color: #475569;
+	border: 1px solid #e2e8f0;
+}
+
+.c2eu-badge--more {
+	background-color: #f1f5f9;
+	color: #64748b;
+}
+
+.c2eu-resume-card__summary {
+	font-size: 0.875rem;
+	line-height: 1.5;
+	color: #475569;
+	margin: 0 0 1.25rem;
+	flex-grow: 1;
+}
+
+.c2eu-resume-card__footer {
+	margin-top: auto;
+	padding-top: 0.75rem;
+	border-top: 1px solid #f1f5f9;
+}
+
+/* -------------------------------------------------------------------------
+ * Pagination
+ * ------------------------------------------------------------------------- */
+.c2eu-resume-pagination {
+	margin: 2.5rem 0 1rem;
+	display: flex;
+	justify-content: center;
+}
+
+.c2eu-resume-pagination ul.page-numbers {
+	display: flex;
+	align-items: center;
+	gap: 0.375rem;
+	list-style: none;
+	padding: 0;
+	margin: 0;
+}
+
+.c2eu-resume-pagination ul.page-numbers li {
+	margin: 0;
+	padding: 0;
+}
+
+.c2eu-resume-pagination a.page-numbers,
+.c2eu-resume-pagination span.page-numbers {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 38px;
+	height: 38px;
+	padding: 0 0.75rem;
+	font-size: 0.875rem;
+	font-weight: 600;
+	border-radius: 8px;
+	text-decoration: none;
+	border: 1px solid #e2e8f0;
+	background: #ffffff;
+	color: #334155;
+	transition: all 0.15s ease-in-out;
+}
+
+.c2eu-resume-pagination a.page-numbers:hover {
+	border-color: #cbd5e1;
+	background: #f8fafc;
+	color: #0f172a;
+}
+
+.c2eu-resume-pagination span.page-numbers.current {
+	background: #2563eb;
+	color: #ffffff;
+	border-color: #2563eb;
+}
+
+/* -------------------------------------------------------------------------
+ * Responsive
+ * ------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+	.c2eu-resume-filters__row {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.c2eu-form-group {
+		flex: 1 1 100%;
+	}
+
+	.c2eu-form-group--submit {
+		margin-top: 0.5rem;
+		width: 100%;
+	}
+
+	.c2eu-form-group--submit .c2eu-btn {
+		flex: 1;
+	}
+
+	.c2eu-resume-grid {
+		grid-template-columns: 1fr;
+	}
+}

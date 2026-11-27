@@ -31,6 +31,7 @@ final class Click2EU_Settings {
 			'job_dashboard'       => array( 'label' => __( 'Job Dashboard', 'click2eu-membership' ), 'option' => 'job_manager_job_dashboard_page_id', 'shortcode' => 'job_dashboard' ),
 			'job_search'          => array( 'label' => __( 'Job Search', 'click2eu-membership' ), 'option' => 'job_manager_jobs_page_id', 'shortcode' => 'jobs' ),
 			'company_listings'    => array( 'label' => __( 'Company Listings', 'click2eu-membership' ), 'option' => 'cariera_companies_page' ),
+			'resume_directory'    => array( 'label' => __( 'Resume Directory', 'click2eu-membership' ), 'option' => 'resume_manager_resumes_page_id', 'shortcode' => 'click2eu_resume_directory' ),
 		);
 	}
 

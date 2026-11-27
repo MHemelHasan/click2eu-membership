@@ -111,6 +111,13 @@ final class Click2EU_Access {
 	}
 
 	public function guard_listing_ajax() {
+		$action = sanitize_key( wp_unslash( $_REQUEST['action'] ?? '' ) );
+		if ( 'resume_manager_get_resumes' === $action ) {
+			if ( ! current_user_can( 'manage_options' ) && ! Click2EU_Auth::is_approved_employer() ) {
+				$this->send_json_denial( new WP_Error( 'click2eu_employer_verification_required', __( 'Employer verification required to access resumes.', 'click2eu-membership' ), array( 'status' => 403 ) ) );
+			}
+			return;
+		}
 		if ( Click2EU_Route_Policy::is_privileged_actor() || Click2EU_Route_Policy::can_access_paid_candidate_features() ) {
 			return;
 		}
@@ -290,6 +297,11 @@ final class Click2EU_Access {
 			return $result;
 		}
 		$method = strtoupper( $request->get_method() );
+		if ( 'GET' === $method && preg_match( '#/(?:resumes?)(?:/|$)#i', $request->get_route() ) ) {
+			if ( ! Click2EU_Auth::is_approved_employer() ) {
+				return $this->rest_error( new WP_Error( 'click2eu_employer_verification_required', __( 'Employer verification required to access resumes.', 'click2eu-membership' ), array( 'status' => 403 ) ) );
+			}
+		}
 		if ( Click2EU_Auth::is_employer() ) {
 			if ( in_array( $method, array( 'POST', 'PUT', 'PATCH' ), true ) && false !== strpos( $request->get_route(), 'job' ) ) {
 				$company_id = absint( $request->get_param( '_company_manager_id' ) ?: $request->get_param( 'company_manager_id' ) );

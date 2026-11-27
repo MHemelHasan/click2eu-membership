@@ -104,13 +104,14 @@ final class Click2EU_Route_Policy {
 			Click2EU_Settings::page_id( 'job_search' ),
 			Click2EU_Settings::page_id( 'company_listings' ),
 			Click2EU_Settings::page_id( 'submit_resume' ),
+			Click2EU_Settings::page_id( 'resume_directory' ),
 		) );
 		if ( $mapped && is_page( $mapped ) ) {
 			return true;
 		}
 		if ( is_singular( 'page' ) ) {
 			$content = (string) get_post_field( 'post_content', get_queried_object_id() );
-			foreach ( array( 'jobs', 'job', 'job_summary', 'companies', 'resumes', 'submit_resume_form' ) as $shortcode ) {
+			foreach ( array( 'jobs', 'job', 'job_summary', 'companies', 'resumes', 'click2eu_resume_directory', 'submit_resume_form' ) as $shortcode ) {
 				if ( has_shortcode( $content, $shortcode ) ) {
 					return true;
 				}
@@ -123,11 +124,31 @@ final class Click2EU_Route_Policy {
 		return false;
 	}
 
+	public static function is_resume_directory_route() {
+		$mapped = class_exists( 'Click2EU_Settings' ) ? Click2EU_Settings::page_id( 'resume_directory' ) : 0;
+		if ( $mapped && is_page( $mapped ) ) {
+			return true;
+		}
+		if ( is_singular( 'page' ) ) {
+			$content = (string) get_post_field( 'post_content', get_queried_object_id() );
+			if ( has_shortcode( $content, 'click2eu_resume_directory' ) || has_shortcode( $content, 'resumes' ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	public static function authorize_current_html_route() {
 		if ( current_user_can( 'manage_options' ) ) {
 			return true;
 		}
 		if ( ! self::is_protected_html_route() ) {
+			return true;
+		}
+		if ( self::is_resume_directory_route() ) {
+			if ( ! is_user_logged_in() ) {
+				return new WP_Error( 'click2eu_authentication_required', __( 'Sign in to access the Resume Directory.', 'click2eu-membership' ), array( 'status' => 401 ) );
+			}
 			return true;
 		}
 		if ( Click2EU_Auth::is_employer() ) {
