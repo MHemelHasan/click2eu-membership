@@ -36,7 +36,7 @@
 - Browser QA: BLOCKED.
 - Automated test harness discovery: NOT TESTED — no harness located.
 
-**Commit:** Pending creation of this documentation checkpoint.
+**Commit:** `eeb4238ead361ee5e2906799871dbc2f82a2abd2`
 
 **Next action:** Restore LocalWP database service, complete runtime audit and
 resolve registration-field provenance before beginning Stage 1.

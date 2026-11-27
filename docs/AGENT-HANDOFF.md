@@ -8,7 +8,7 @@
   `c74c3727464616021f7e41a7e874c36dafa03680`
 - Baseline plugin version: 0.9.2
 - Implementation branch: `staging`, pushed and tracking `origin/staging`
-- Current `staging` commit: `c74c3727464616021f7e41a7e874c36dafa03680`
+- Current audit-checkpoint commit: `eeb4238ead361ee5e2906799871dbc2f82a2abd2`
 - Never use the stale/diverged `develop` branch as this implementation base.
 - Do not edit themes or vendor plugins. Work only in this repository.
 

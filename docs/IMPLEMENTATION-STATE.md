@@ -15,7 +15,7 @@ renewal, upgrade, expiration, payment-notice and notification behavior.
 | Verified baseline commit | `c74c3727464616021f7e41a7e874c36dafa03680` |
 | Baseline branch | `master` / `origin/master` |
 | Current implementation branch | `staging` / `origin/staging` |
-| Current implementation commit | `c74c3727464616021f7e41a7e874c36dafa03680` |
+| Current implementation commit | `eeb4238ead361ee5e2906799871dbc2f82a2abd2` |
 | Overall completion | 5% — Stage 0 source/environment audit completed; no product code implemented |
 
 ## Current stage
