@@ -156,3 +156,83 @@ resolve registration-field provenance before beginning Stage 1.
 - Browser QA: BLOCKED (LocalWP HTTP halted, Cariera license inactive).
 
 **Next action:** Stage 2 — Employer verification workflow, registration field persistence, and admin review screen.
+
+## 2026-11-28 (Asia/Dhaka) — Stage 2 Employer Verification & Centralized Authorization implementation
+
+**Stage:** Stage 2 — Employer Verification, Admin Approval and Centralized Authorization.
+
+**Completed:**
+
+- Created new class `Click2EU_Employer_Verification` (`includes/class-click2eu-employer-verification.php`):
+  - User meta keys defined: `_click2eu_employer_verification_status`, `_click2eu_company_name`, `_click2eu_company_registration_number`, `_click2eu_employer_verification_submitted_at`, `_click2eu_employer_verification_reviewed_at`, `_click2eu_employer_verification_reviewed_by`, `_click2eu_employer_verification_admin_note`.
+  - Allowed statuses defined: `pending`, `approved`, `rejected`, `suspended`.
+  - Fail-closed verification lifecycle: missing, empty, or corrupt statuses on employers strictly default to `pending`. Non-employers (candidates, admins) never receive or check employer verification status.
+  - `is_approved()` returns true strictly for approved employers.
+  - `set_status()` updates status, audit timestamps (UTC), reviewer ID, and internal admin note.
+  - `get_employer_details()` retrieves structured profile data for admin review.
+- Created `assets/employer-registration.js`:
+  - Dynamically injects Company Name and Company Registration Number into Cariera registration modal (`form#cariera_registration`) before submit button.
+  - Toggles visibility based on role selection (slides down for employer, slides up for candidate).
+  - Handles popup open events (`cariera:popup_opened`).
+  - Added fallback registration fields via `register_form` hook.
+- Server-side AJAX registration validation:
+  - Priority 5 on `wp_ajax_nopriv_cariera_ajax_register` strictly requiring Company Name and Registration Number when `cariera_user_role === 'employer'`.
+  - Candidate registration passes through unmodified without requiring company fields.
+- User registration persistence:
+  - Hooked `user_register` to initialize status to `pending`, store company name and registration number, and record submission timestamp.
+- Auto-login interception:
+  - Hooked `cariera_core_register_process_completed` for newly registered employers.
+  - Destroys active session, clears auth cookie, and resets current user to 0.
+  - Sends JSON `status => true` with a clear verification-pending notice, preventing Cariera frontend JS from redirecting into dashboard.
+- Authentication pipeline blocking:
+  - Hooked `wp_authenticate_user`: blocks unapproved employers (`pending`, `rejected`, `suspended`) with distinct user-facing error messages.
+  - Administrators and Candidates authenticate normally without interference.
+  - Active session guard on `init` priority 1 terminates any lingering session if an employer is suspended or rejected.
+- Centralized authorization integration:
+  - `Click2EU_Auth::is_approved_employer()` delegates directly to `Click2EU_Employer_Verification::is_approved()`.
+  - `Click2EU_Route_Policy::is_privileged_actor()` updated: requires `Click2EU_Auth::is_approved_employer()` instead of role-only `Click2EU_Auth::is_employer()`.
+  - Protected HTML routes in `Click2EU_Route_Policy::authorize_current_html_route()` reject unapproved employers with 403 `click2eu_employer_verification_required`.
+  - `Click2EU_Access::employer_can_submit_job()` requires `Click2EU_Auth::is_approved_employer()`.
+  - `Click2EU_Access::validate_job_company()` blocks unapproved employers from posting jobs.
+  - `Click2EU_Access::guard_rest()` and `moderate_rest_company()` block unapproved employers with 403.
+- Admin review interface:
+  - Submenu registered under `Click2EU Memberships` (`WP Admin > Click2EU Memberships > Employer Verification`, slug `click2eu-employer-verification`).
+  - Filter tabs with live counts (`All`, `Pending`, `Approved`, `Rejected`, `Suspended`).
+  - Table rendering employer ID, display name, user email, login, company name, registration number, submitted timestamp, status badge, reviewed timestamp & reviewer, internal note, and action buttons.
+  - Post/Redirect/Get actions with nonces for `approve`, `reject`, `suspend`, `set_pending`, and `save_note`.
+  - Admin notes are strictly internal and never exposed to the employer on the frontend.
+- Plugin bootstrap:
+  - Required `includes/class-click2eu-employer-verification.php` and instantiated `Click2EU_Employer_Verification` in `click2eu-membership.php`.
+  - Allowed hook registered in `includes/class-click2eu-admin.php`.
+- Test suites:
+  - Created `scratch/test-stage2-verification.php` (90/90 assertions PASS).
+  - Re-verified `scratch/test-stage1-static.php` (74/74 assertions PASS).
+  - Re-verified `scratch/test-stage1-mock.php` (28/28 assertions PASS).
+  - Total: 192/192 assertions passing (0 failures, 0 regressions).
+  - PHP syntax check across all plugin PHP files: PASS (0 errors).
+
+**Files changed:**
+
+- `assets/employer-registration.js` (new)
+- `includes/class-click2eu-employer-verification.php` (new)
+- `includes/class-click2eu-admin.php`
+- `includes/class-click2eu-auth.php`
+- `includes/class-click2eu-route-policy.php`
+- `includes/class-click2eu-access.php`
+- `includes/class-click2eu-resume-directory.php`
+- `click2eu-membership.php`
+- `scratch/test-stage2-verification.php` (new)
+- `docs/IMPLEMENTATION-STATE.md`
+- `docs/AGENT-HANDOFF.md`
+- `docs/IMPLEMENTATION-LOG.md`
+
+**Tests/evidence:**
+
+- PHP 8.4 syntax lint (all plugin files): PASS (`FAIL=0`).
+- Stage 2 test suite (`scratch/test-stage2-verification.php`): PASS (90/90 assertions).
+- Stage 1 static test suite (`scratch/test-stage1-static.php`): PASS (74/74 assertions).
+- Stage 1 mock functional test suite (`scratch/test-stage1-mock.php`): PASS (28/28 assertions).
+- Total assertions passing: 192/192.
+- Browser QA: BLOCKED (LocalWP HTTP halted, Cariera license inactive).
+
+**Next action:** Stage 3 — Contact Candidate workflow and removal of Cariera Invite Candidate display callbacks.

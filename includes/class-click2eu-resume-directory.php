@@ -56,7 +56,9 @@ final class Click2EU_Resume_Directory {
 		}
 
 		if ( Click2EU_Auth::is_employer( $user ) ) {
-			$status = get_user_meta( $user->ID, '_click2eu_employer_verification_status', true );
+			$status = class_exists( 'Click2EU_Employer_Verification' )
+				? Click2EU_Employer_Verification::get_status( $user )
+				: get_user_meta( $user->ID, '_click2eu_employer_verification_status', true );
 			if ( 'rejected' === $status ) {
 				return 'rejected';
 			}

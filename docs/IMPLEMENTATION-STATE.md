@@ -15,14 +15,14 @@ renewal, upgrade, expiration, payment-notice and notification behavior.
 | Verified baseline commit | `c74c3727464616021f7e41a7e874c36dafa03680` |
 | Baseline branch | `master` / `origin/master` |
 | Implementation branch | `staging` / `origin/staging` |
-| Previous checkpoint commit | `b90efe439c09253ec382032210e060943bd5bdf8` |
-| Overall completion | 35% — Stage 0 audit and Stage 1 Resume Directory implementation fully completed and verified |
+| Previous checkpoint commit | `a6abe4777bfb3cb4713a28ef66699252063065a7` |
+| Overall completion | 65% — Stage 0 audit, Stage 1 Resume Directory, and Stage 2 Employer Verification fully completed and verified |
 
 ## Current stage
 
-**Stage 1 — Resume Directory Implementation: COMPLETED.**
+**Stage 2 — Employer Verification Workflow, Persistence & Centralized Authorization: COMPLETED.**
 
-Next stage: **Stage 2 — Employer Verification Workflow, Persistence & Centralized Authorization.**
+Next stage: **Stage 3 — Contact Candidate Workflow & Invite Candidate Removal.**
 
 ## Completed tasks
 
@@ -96,6 +96,56 @@ Next stage: **Stage 2 — Employer Verification Workflow, Persistence & Centrali
   - Static assertion suite `scratch/test-stage1-static.php`: 74/74 PASS.
   - Functional mock suite `scratch/test-stage1-mock.php`: 28/28 PASS.
   - Total: 102/102 test assertions passing.
+
+### Stage 2 (Employer Verification & Centralized Authorization)
+- **PASS** Created new module `Click2EU_Employer_Verification` (`includes/class-click2eu-employer-verification.php`).
+- **PASS** User meta keys and constants implemented:
+  - `_click2eu_employer_verification_status` (`pending`, `approved`, `rejected`, `suspended`).
+  - `_click2eu_company_name`.
+  - `_click2eu_company_registration_number`.
+  - `_click2eu_employer_verification_submitted_at`.
+  - `_click2eu_employer_verification_reviewed_at`.
+  - `_click2eu_employer_verification_reviewed_by`.
+  - `_click2eu_employer_verification_admin_note`.
+- **PASS** Fail-closed status model:
+  - Missing, empty, or unknown verification statuses on employers strictly default to `pending`.
+  - Non-employers (candidates, admins) never receive or evaluate an employer verification status.
+  - `Click2EU_Employer_Verification::is_approved()` returns true strictly for approved employers.
+- **PASS** Centralized authorization integration:
+  - `Click2EU_Auth::is_approved_employer()` delegates directly to `Click2EU_Employer_Verification::is_approved()`.
+  - `Click2EU_Route_Policy::is_privileged_actor()` updated: requires `Click2EU_Auth::is_approved_employer()` instead of role-only `Click2EU_Auth::is_employer()`.
+  - Protected HTML routes in `Click2EU_Route_Policy::authorize_current_html_route()` reject unapproved employers with `click2eu_employer_verification_required` (403).
+  - `Click2EU_Access::employer_can_submit_job()` requires `Click2EU_Auth::is_approved_employer()`.
+  - `Click2EU_Access::validate_job_company()` blocks unapproved employers from posting jobs.
+  - `Click2EU_Access::guard_rest()` and `moderate_rest_company()` block unapproved employers with 403.
+- **PASS** Employer registration fields & frontend integration:
+  - Created `assets/employer-registration.js`: dynamically injects Company Name and Company Registration Number into Cariera registration modal (`form#cariera_registration`).
+  - Dynamically slides down for `cariera_user_role === 'employer'` and slides up for `candidate`.
+  - Enqueued conditionally on frontend for unauthenticated visitors.
+  - Standard WordPress registration fallback fields hooked into `register_form`.
+- **PASS** Server-side registration validation & persistence:
+  - Priority 5 hook on `wp_ajax_nopriv_cariera_ajax_register` validates that both Company Name and Company Registration Number are provided when registering as employer.
+  - Candidate registration passes through unmodified without requiring company fields.
+  - `on_user_register` hook initializes new employers with `pending` status, saves company name and registration number, and logs submission timestamp.
+- **PASS** Auto-login interception:
+  - Hooked `cariera_core_register_process_completed` to terminate auto-login sessions created by Cariera for new employers.
+  - Calls `wp_destroy_current_session()`, `wp_clear_auth_cookie()`, and `wp_set_current_user(0)`.
+  - Returns `register => true`, `status => true` with a clear pending verification notice, preventing Cariera frontend JS from redirecting into dashboard.
+- **PASS** Login blocking for unapproved employers:
+  - Hooked `wp_authenticate_user` pipeline: blocks `pending`, `rejected`, and `suspended` employers with distinct user-facing messages.
+  - Administrators and Candidates authenticate normally without interference.
+  - Active session guard on `init` priority 1 terminates any lingering session if an employer's status changes to non-approved.
+- **PASS** Admin review screen:
+  - Submenu registered under `Click2EU Memberships` (`WP Admin > Click2EU Memberships > Employer Verification`, slug `click2eu-employer-verification`).
+  - Filter tabs with dynamic counts (`All`, `Pending Review`, `Approved`, `Rejected`, `Suspended`).
+  - Tabular view of employer ID, user details, company name, registration number, submission date, status badge, reviewer info, private admin notes, and action buttons.
+  - Post/Redirect/Get actions with nonces for `approve`, `reject`, `suspend`, `set_pending`, and `save_note`.
+  - Admin notes are strictly internal and never exposed to the employer on the frontend.
+- **PASS** Stage 2 test suite:
+  - Created comprehensive test suite `scratch/test-stage2-verification.php` (90/90 assertions PASS).
+  - Re-verified Stage 1 static suite `scratch/test-stage1-static.php` (74/74 assertions PASS).
+  - Re-verified Stage 1 functional mock suite `scratch/test-stage1-mock.php` (28/28 assertions PASS).
+  - Total: 192/192 assertions passing with 0 failures and 0 regressions.
   `click2eu-membership/` (`FAIL=0`).
 
 ## Current source and runtime findings

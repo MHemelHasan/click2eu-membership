@@ -309,6 +309,9 @@ final class Click2EU_Access {
 			}
 		}
 		if ( Click2EU_Auth::is_employer() ) {
+			if ( ! Click2EU_Auth::is_approved_employer() ) {
+				return $this->rest_error( new WP_Error( 'click2eu_employer_verification_required', __( 'Employer verification required to access this API route.', 'click2eu-membership' ), array( 'status' => 403 ) ) );
+			}
 			if ( in_array( $method, array( 'POST', 'PUT', 'PATCH' ), true ) && false !== strpos( $request->get_route(), 'job' ) ) {
 				$company_id = absint( $request->get_param( '_company_manager_id' ) ?: $request->get_param( 'company_manager_id' ) );
 				if ( ! $company_id && $request->get_param( 'id' ) ) {
@@ -363,12 +366,15 @@ final class Click2EU_Access {
 		if ( current_user_can( 'manage_options' ) || ! Click2EU_Auth::is_employer() ) {
 			return $can_submit;
 		}
-		return $can_submit && Click2EU_Route_Policy::user_has_approved_company( get_current_user_id() );
+		return $can_submit && Click2EU_Auth::is_approved_employer() && Click2EU_Route_Policy::user_has_approved_company( get_current_user_id() );
 	}
 
 	public function validate_job_company( $valid, $fields, $values ) {
 		if ( is_wp_error( $valid ) || ! $valid || current_user_can( 'manage_options' ) || ! Click2EU_Auth::is_employer() ) {
 			return $valid;
+		}
+		if ( ! Click2EU_Auth::is_approved_employer() ) {
+			return new WP_Error( 'click2eu_employer_verification_required', __( 'Employer verification is required before posting a job.', 'click2eu-membership' ) );
 		}
 		$submission = sanitize_key( wp_unslash( $_POST['company_submission'] ?? '' ) );
 		if ( 'new_company' === $submission ) {
@@ -386,6 +392,9 @@ final class Click2EU_Access {
 	public function moderate_rest_company( $prepared_post, $request ) {
 		if ( current_user_can( 'manage_options' ) || ! Click2EU_Auth::is_employer() || is_wp_error( $prepared_post ) ) {
 			return $prepared_post;
+		}
+		if ( ! Click2EU_Auth::is_approved_employer() ) {
+			return new WP_Error( 'click2eu_employer_verification_required', __( 'Employer verification required to create a company.', 'click2eu-membership' ), array( 'status' => 403 ) );
 		}
 		$prepared_post->post_status = 'pending';
 		$prepared_post->post_author = get_current_user_id();

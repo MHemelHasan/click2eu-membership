@@ -8,7 +8,7 @@
   `c74c3727464616021f7e41a7e874c36dafa03680`
 - Baseline plugin version: 0.9.2
 - Implementation branch: `staging`, pushed and tracking `origin/staging`
-- Previous checkpoint commit: `b90efe439c09253ec382032210e060943bd5bdf8`
+- Previous checkpoint commit: `a6abe4777bfb3cb4713a28ef66699252063065a7`
 - Never use the stale/diverged `develop` branch as this implementation base.
 - Do not edit themes or vendor plugins. Work only in this repository.
 
@@ -19,45 +19,64 @@
 3. Latest entry in `docs/IMPLEMENTATION-LOG.md`
 4. `docs/click2eu-employer-verification-resume-plan.md` in full
 
-## Stage 1 completed: Resume Directory
+## Stage 2 completed: Employer Verification & Centralized Authorization
 
-Stage 1 is complete and tested:
-- **Resume Directory class & shortcode:** `Click2EU_Resume_Directory` (`includes/class-click2eu-resume-directory.php`) implements `[click2eu_resume_directory]`.
-- **Fail-closed access control:**
-  - Admin: allowed.
-  - Approved Employer: allowed (`Click2EU_Auth::is_approved_employer()`).
-  - Pending Employer: dedicated verification-pending message.
-  - Rejected/Suspended Employer: dedicated access-restricted message.
-  - Candidate: dedicated access-denied message (redirect to Candidate Dashboard).
-  - Guest: dedicated sign-in required message (redirect to Cariera auth URL, preserving return destination).
-- **Centralized authorization helper:** `Click2EU_Auth::is_approved_employer()` added; accepts `WP_User`, user ID int, or null for current user. Fails closed (returns false for all employers without verified approval). Ready for Stage 2 `Click2EU_Employer_Verification` integration.
-- **Data queries & N+1 prevention:** Restricts queries to `post_type = resume`, `post_status = publish`, and author strictly in `Click2EU_Route_Policy::active_candidate_ids()` who have the `candidate` role. Pre-caches post meta and taxonomy terms in batched SQL queries.
-- **Search & Filters:** Server-side filtering using namespaced GET parameters (`c2eu_resume_keyword`, `c2eu_resume_location`, `c2eu_resume_category`, `c2eu_resume_skill`). Pagination via `c2eu_paged` preserving all active filters. Clear/reset button and responsive empty states.
-- **Privacy:** Candidate photo, title, location, category, capped skills (5 max), and excerpt rendered. Candidate email (`_candidate_email`, `user_email`) and phone details are strictly omitted from output.
-- **Styling:** Scoped CSS in `assets/resume-directory.css` (`.c2eu-resume-directory`). Enqueued conditionally only on the resume directory page or when the shortcode is present.
-- **Endpoint protections:** AJAX (`resume_manager_get_resumes`) and REST (`GET /resumes`) fail closed with 403 unless the user is an administrator or approved employer.
-- **Page ID 114 updated in MySQL:** Content replaced from `[resumes]` to `[click2eu_resume_directory]`. Verified in database.
-- **Tests passing:**
-  - 22/22 PHP files syntax check clean.
-  - 74/74 assertions in `scratch/test-stage1-static.php` pass.
-  - 28/28 assertions in `scratch/test-stage1-mock.php` pass.
+Stage 2 is fully implemented and verified:
+- **Module:** `Click2EU_Employer_Verification` (`includes/class-click2eu-employer-verification.php`).
+- **User Meta Keys:**
+  - `_click2eu_employer_verification_status` (`pending`, `approved`, `rejected`, `suspended`).
+  - `_click2eu_company_name`.
+  - `_click2eu_company_registration_number`.
+  - `_click2eu_employer_verification_submitted_at`.
+  - `_click2eu_employer_verification_reviewed_at`.
+  - `_click2eu_employer_verification_reviewed_by`.
+  - `_click2eu_employer_verification_admin_note`.
+- **Fail-Closed Verification Lifecycle:**
+  - Status defaults to `pending` for all employers lacking a verification meta record. Never auto-approves.
+  - Candidates and Administrators are completely exempt from employer verification status.
+  - `is_approved()` returns true strictly for employers with `approved` status.
+- **Centralized Authorization Integration:**
+  - `Click2EU_Auth::is_approved_employer()` delegates directly to `Click2EU_Employer_Verification::is_approved()`.
+  - `Click2EU_Route_Policy::is_privileged_actor()` updated from role-only check to require `Click2EU_Auth::is_approved_employer()`.
+  - Route policies, REST APIs (`guard_rest`), company moderation, and job posting validation now require approved employer status.
+- **Employer Registration Integration:**
+  - Injected Company Name and Registration Number fields into Cariera's modal registration (`form#cariera_registration`) via `assets/employer-registration.js`.
+  - Fields dynamically slide down when `cariera_user_role` is employer, and slide up for candidate.
+  - Added fallback fields to standard `register_form`.
+  - Server-side AJAX validation runs at priority 5 before Cariera's priority 10 handler, strictly requiring both fields for employers while leaving candidates untouched.
+  - User registration hook initializes status to `pending`, stores company fields, and logs UTC submission timestamp.
+- **Auto-Login Prevention:**
+  - Intercepts Cariera's `cariera_core_register_process_completed` hook for newly registered employers.
+  - Destroys active session, clears auth cookies, and resets current user.
+  - Returns explicit verification-pending notice to prevent client-side redirect into dashboard.
+- **Authentication Blocking:**
+  - `wp_authenticate_user` blocks unapproved employers (`pending`, `rejected`, `suspended`) with distinct user-facing messages.
+  - Active session guard on `init` priority 1 drops sessions if an employer is suspended or rejected after login.
+- **Admin Review Interface:**
+  - Registered under `WP Admin > Click2EU Memberships > Employer Verification` (`click2eu-employer-verification`).
+  - Tabbed filters with live counts (`All`, `Pending`, `Approved`, `Rejected`, `Suspended`).
+  - Review table with company name, registration number, submission date, status badge, reviewer info, private admin notes, and action buttons (`Approve`, `Reject`, `Suspend`, `Set Pending`, `Save Note`).
+  - All actions protected by nonces and Post/Redirect/Get.
+- **Test Results:**
+  - 90/90 assertions passing in `scratch/test-stage2-verification.php`.
+  - 74/74 assertions passing in `scratch/test-stage1-static.php`.
+  - 28/28 assertions passing in `scratch/test-stage1-mock.php`.
+  - Total: 192/192 assertions passing (0 failures, 0 regressions).
 
-## Next Stage: Stage 2 — Employer Verification Workflow
+## Next Stage: Stage 3 — Contact Candidate Workflow & Invite Candidate Removal
 
-The next task is **Stage 2**:
-1. Implement Employer Verification module (`includes/class-click2eu-employer-verification.php`).
-2. Manage user-meta keys:
-   - `_click2eu_employer_verification_status` (`pending`, `approved`, `rejected`, `suspended`)
-   - `_click2eu_company_name`
-   - `_click2eu_company_registration_number`
-   - `_click2eu_employer_verification_submitted_at`
-   - `_click2eu_employer_verification_reviewed_at`
-   - `_click2eu_employer_verification_reviewed_by`
-   - `_click2eu_employer_verification_admin_note`
-3. Prevent unapproved employers from logging in (`wp_authenticate_user` check).
-4. Implement Admin review screen under `WP Admin > Click2EU Memberships > Employer Verification`.
-5. Integrate registration form fields (resolve Company Name and Registration Number persistence).
-6. Convert role-only employer checks across the codebase to `Click2EU_Auth::is_approved_employer()`.
+The next task is **Stage 3**:
+1. Remove Cariera's Invite Candidate display callbacks:
+   - Priority 100 on `single_resume_meta_end` (V1 layout).
+   - Priority 50 on `cariera_candidate_detail_actions` (V2/V3 layouts).
+   - Remove only the exact callback (`Cariera_Core\Extensions\Resume\Invite_Candidate::display_invite_candidate`). Do NOT use `remove_all_actions()`.
+2. Implement secure Contact Candidate workflow:
+   - Only approved employers (`Click2EU_Auth::is_approved_employer()`) or administrators can initiate contact.
+   - Inject "Contact Candidate" modal button on single resume page.
+   - Message modal with subject, message body, company name (prefilled), and reply-to email.
+   - Candidate email is never exposed in frontend markup or DOM attributes.
+   - Rate limiting per employer per candidate.
+   - Secure server-side email dispatch (`wp_mail()`) to the candidate's private address with employer as Reply-To.
 
 ## Stage 0 completed
 

@@ -33,6 +33,7 @@ require_once __DIR__ . '/includes/class-click2eu-dashboard.php';
 require_once __DIR__ . '/includes/class-click2eu-payment-notice.php';
 require_once __DIR__ . '/includes/class-click2eu-admin.php';
 require_once __DIR__ . '/includes/class-click2eu-resume-directory.php';
+require_once __DIR__ . '/includes/class-click2eu-employer-verification.php';
 
 register_activation_hook( __FILE__, array( 'Click2EU_Memberships', 'install' ) );
 register_activation_hook( __FILE__, array( 'Click2EU_Dashboard', 'activate' ) );
@@ -664,3 +665,4 @@ new Click2EU_Admin();
 new Click2EU_Settings();
 new Click2EU_Notifications();
 new Click2EU_Resume_Directory();
+new Click2EU_Employer_Verification();

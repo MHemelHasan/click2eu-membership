@@ -11,7 +11,7 @@ final class Click2EU_Route_Policy {
 	const RESUME_POST_TYPE = 'resume';
 
 	public static function is_privileged_actor() {
-		return current_user_can( 'manage_options' ) || Click2EU_Auth::is_employer();
+		return current_user_can( 'manage_options' ) || Click2EU_Auth::is_approved_employer();
 	}
 
 	public static function current_candidate_membership() {
@@ -152,6 +152,9 @@ final class Click2EU_Route_Policy {
 			return true;
 		}
 		if ( Click2EU_Auth::is_employer() ) {
+			if ( ! Click2EU_Auth::is_approved_employer() ) {
+				return new WP_Error( 'click2eu_employer_verification_required', __( 'Employer verification required to access this feature.', 'click2eu-membership' ), array( 'status' => 403 ) );
+			}
 			return is_singular( self::RESUME_POST_TYPE ) && ! self::resume_owner_is_effectively_active( get_queried_object_id() )
 				? new WP_Error( 'click2eu_resume_hidden', __( 'This resume is not currently available.', 'click2eu-membership' ), array( 'status' => 403 ) )
 				: true;
