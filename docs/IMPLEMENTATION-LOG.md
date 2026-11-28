@@ -250,6 +250,6 @@ Source checkpoint: `ee7185953f4baf3374f7c62129f75d8d8bc174e9`.
   privacy, nonce, idempotency, cooldown, hourly limit, Candidate mail, and admin
   copy.
 - Added the owner-facing Stage 2/3 visual test guide.
-- PHP 8.2 and 8.4 lint: PASS. Automated suites: PASS, 227/227 assertions.
+- PHP 8.2 and 8.4 lint: PASS. Automated suites: PASS, 230/230 assertions.
 - Licensed Cariera browser/runtime and SMTP/inbox checks: NOT TESTED locally;
   owner validation is required on the isolated licensed test site.

@@ -567,3 +567,7 @@ authorization, exact Invite Candidate replacement, Contact privacy, mail
 outcomes, idempotency, and rate limits. PHP 8.2/8.4 lint is required before the
 release archive. Licensed Cariera browser E2E and SMTP/inbox delivery remain
 owner-run and must not be inferred from static tests.
+
+Final automated result: 230/230 assertions PASS (Stage 1: 102, Stage 2: 90,
+Stage 3/final authorization: 38). PHP 8.2 and PHP 8.4 lint both report zero
+failures.

@@ -22,7 +22,7 @@ authorization, idempotency, cooldown, and hourly-limit checks.
 
 ## Test state
 
-- Automated checks: PASS, 227/227 assertions.
+- Automated checks: PASS, 230/230 assertions.
 - PHP 8.2 and 8.4 lint: PASS.
 - Licensed Cariera browser tests: NOT TESTED/BLOCKED locally.
 - SMTP and inbox delivery: NOT TESTED.

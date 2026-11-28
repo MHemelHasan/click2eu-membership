@@ -18,7 +18,7 @@
 | Stage 1 - Resume Directory | Complete | Owner acceptance recommended |
 | Stage 2 - Employer Verification | Complete after consistency repairs | Pending on licensed test site |
 | Stage 3 - Single Resume Contact Candidate | Implemented and statically verified | Pending on licensed test site |
-| Stage 4 - final audit, documentation, and packaging | In progress | Requires owner visual results |
+| Stage 4 - final audit, documentation, and packaging | Technically complete | Requires owner visual results |
 
 The three product capabilities are source-complete. The final technical gate
 found and closed Candidate single-Resume viewing and direct CV-download gaps.
@@ -63,7 +63,7 @@ The pre-Stage-3 audit found and repaired four gaps:
 - Stage 2 mock suite: PASS, 90/90.
 - Stage 1 static suite: PASS, 74/74.
 - Stage 1 mock suite: PASS, 28/28.
-- Total automated assertions: PASS, 227/227.
+- Total automated assertions: PASS, 230/230.
 - Git whitespace validation: PASS.
 - Real Cariera browser/runtime validation: NOT TESTED locally.
 - Actual SMTP/inbox delivery: NOT TESTED locally.
@@ -72,7 +72,7 @@ The pre-Stage-3 audit found and repaired four gaps:
 
 Cariera Core 2.0.2 and Addons 1.1.1 deactivate locally because legitimate
 license activation is absent. Their license checks were not bypassed. Install
-source checkpoint `ee71859` (or a later documentation-only descendant) on the
+latest `staging` checkpoint on the
 isolated licensed test site and follow
 `docs/STAGE3-VISUAL-TEST-GUIDE.md`. Return each failure with its step, layout,
 screenshot, console error, and sanitized log excerpt.
