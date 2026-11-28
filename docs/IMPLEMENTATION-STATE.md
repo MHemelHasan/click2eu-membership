@@ -7,6 +7,7 @@
 - Plugin version: `0.9.2`
 - Verified baseline: `c74c3727464616021f7e41a7e874c36dafa03680`
 - Previous checkpoint: `aff8762`
+- Stage 2 repair and Stage 3 source checkpoint: `ee7185953f4baf3374f7c62129f75d8d8bc174e9`
 - Themes and vendor plugins were inspected only; none were changed.
 
 ## Current status
@@ -70,6 +71,7 @@ The pre-Stage-3 audit found and repaired four gaps:
 
 Cariera Core 2.0.2 and Addons 1.1.1 deactivate locally because legitimate
 license activation is absent. Their license checks were not bypassed. Install
-this `staging` checkpoint on the isolated licensed test site and follow
+source checkpoint `ee71859` (or a later documentation-only descendant) on the
+isolated licensed test site and follow
 `docs/STAGE3-VISUAL-TEST-GUIDE.md`. Return each failure with its step, layout,
 screenshot, console error, and sanitized log excerpt.

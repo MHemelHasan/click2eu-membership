@@ -239,6 +239,8 @@ resolve registration-field provenance before beginning Stage 1.
 
 ## 2026-11-28 (Asia/Dhaka) - Stage 2 audit and Stage 3 implementation
 
+Source checkpoint: `ee7185953f4baf3374f7c62129f75d8d8bc174e9`.
+
 - Audited Stage 2 before Stage 3 and confirmed four gaps: standard-registration
   validation, Employer admin pagination, and two role-only authorization paths.
 - Repaired all four without adding statuses or changing vendor code.

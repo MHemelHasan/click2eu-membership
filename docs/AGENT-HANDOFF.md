@@ -6,6 +6,7 @@
 - Branch: `staging`; do not use stale `develop` for this work.
 - Plugin version: `0.9.2`
 - Baseline: `c74c3727464616021f7e41a7e874c36dafa03680`
+- Stage 3 implementation commit: `ee7185953f4baf3374f7c62129f75d8d8bc174e9`
 - Do not edit Cariera, WP Job Manager, WordPress core, themes, or production.
 
 ## Completed
