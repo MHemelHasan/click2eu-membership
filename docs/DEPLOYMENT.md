@@ -1,5 +1,17 @@
 # Click2EU Membership deployment
 
+## v0.9.2 Employer verification and Resume experience
+
+Deploy the versioned plugin ZIP to an isolated, legitimately licensed Cariera
+test site before production. Do not replace production with the LocalWP database.
+Back up the database and current plugin directory, record the commit and SHA-256,
+then follow `EMPLOYER-RESUME-FINAL-HANDOFF.md` and
+`STAGE3-VISUAL-TEST-GUIDE.md`. Production is blocked until owner acceptance.
+
+Rollback by atomically restoring the previous plugin ZIP/directory and clearing
+all page/object/CDN caches. Do not erase new Employer verification user meta,
+membership ledger rows, orders, or notification records.
+
 ## v0.7.4 final artifact and conditional launch status
 
 The final 0.7.4 plugin artifact has been authorized for controlled acceptance.

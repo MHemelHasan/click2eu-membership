@@ -377,3 +377,17 @@ Verified adapters cover Cariera's `application_form_validate_fields` and
 Manager's per-job apply visibility filter, and standard `/wp/v2/resumes` writes.
 Unrelated REST routes and public REST reads are unchanged. Cariera Addons is
 inactive locally, so live application/resume E2E remains blocked.
+Employer verification and Resume experience
+-------------------------------------------
+
+Employer verification is stored in WordPress user meta and fails closed:
+missing Employer status is Pending. Candidate registration is unchanged.
+Administrators review accounts under Click2EU Memberships > Employer
+Verification. Only approved Employers and Administrators can use the Resume
+Directory, single Candidate profiles, CV downloads, or Contact Candidate.
+
+Use [click2eu_resume_directory] on the existing Resume page. Single Resumes keep
+their existing Resume post-type permalinks; no separate page is required.
+Deployment, rollback, status messages, data keys, and owner acceptance steps are
+documented in docs/EMPLOYER-RESUME-FINAL-HANDOFF.md and
+docs/STAGE3-VISUAL-TEST-GUIDE.md.

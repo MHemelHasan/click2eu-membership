@@ -151,6 +151,11 @@ final class Click2EU_Route_Policy {
 			}
 			return true;
 		}
+		// Single Resume profiles belong to the Employer/Admin directory. Candidate
+		// editing and management remain on the mapped Resume Dashboard routes.
+		if ( is_singular( self::RESUME_POST_TYPE ) && Click2EU_Auth::is_candidate() ) {
+			return new WP_Error( 'click2eu_resume_employer_only', __( 'Candidate profiles are available only to approved Employers.', 'click2eu-membership' ), array( 'status' => 403 ) );
+		}
 		if ( Click2EU_Auth::is_employer() ) {
 			if ( ! Click2EU_Auth::is_approved_employer() ) {
 				return new WP_Error( 'click2eu_employer_verification_required', __( 'Employer verification required to access this feature.', 'click2eu-membership' ), array( 'status' => 403 ) );

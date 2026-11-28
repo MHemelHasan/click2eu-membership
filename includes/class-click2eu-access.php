@@ -19,6 +19,7 @@ final class Click2EU_Access {
 		add_filter( 'cariera_get_companies', array( $this, 'filter_company_query' ), 5, 2 );
 		add_filter( 'resume_manager_get_resumes', array( $this, 'filter_resume_query' ), 5, 2 );
 		add_filter( 'resume_manager_my_resume_actions', array( $this, 'filter_resume_dashboard_actions' ), 5, 2 );
+		add_filter( 'resume_manager_user_can_download_resume_file', array( $this, 'authorize_resume_download' ), 5, 2 );
 		add_filter( 'wp_sitemaps_post_types', array( $this, 'filter_sitemap_post_types' ) );
 		add_filter( 'wp_sitemaps_taxonomies', array( $this, 'filter_sitemap_taxonomies' ) );
 		add_filter( 'wp_robots', array( $this, 'private_route_robots' ) );
@@ -274,6 +275,18 @@ final class Click2EU_Access {
 
 	public function filter_resume_dashboard_actions( $actions, $resume ) {
 		return Click2EU_Auth::is_candidate() && ! Click2EU_Route_Policy::can_access_paid_candidate_features() ? array() : $actions;
+	}
+
+	/** Restrict direct CV downloads to approved profile viewers. */
+	public function authorize_resume_download( $can_download, $resume_id ) {
+		if ( ! $can_download ) {
+			return false;
+		}
+		if ( current_user_can( 'manage_options' ) ) {
+			return true;
+		}
+		return Click2EU_Auth::is_approved_employer()
+			&& Click2EU_Route_Policy::resume_owner_is_effectively_active( absint( $resume_id ) );
 	}
 
 	public function filter_sitemap_post_types( $post_types ) {

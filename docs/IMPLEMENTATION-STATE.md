@@ -18,10 +18,11 @@
 | Stage 1 - Resume Directory | Complete | Owner acceptance recommended |
 | Stage 2 - Employer Verification | Complete after consistency repairs | Pending on licensed test site |
 | Stage 3 - Single Resume Contact Candidate | Implemented and statically verified | Pending on licensed test site |
-| Final release/security acceptance | Not started | Requires owner visual results |
+| Stage 4 - final audit, documentation, and packaging | In progress | Requires owner visual results |
 
-Overall completion is approximately 90%. Stage 3 source work is complete, but
-release acceptance requires owner validation of Cariera V1/V2/V3 and mail.
+The three product capabilities are source-complete. The final technical gate
+found and closed Candidate single-Resume viewing and direct CV-download gaps.
+Release acceptance still requires owner validation of Cariera V1/V2/V3 and mail.
 
 ## Stage 2 completion audit
 

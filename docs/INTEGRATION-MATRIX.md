@@ -114,3 +114,18 @@ retry harness contained two invalid assertions because it selected an upgrade
 target for a generic activation event. The engine correctly rejected that event;
 the harness was corrected to an original Active membership and all three focused
 retry assertions passed. This is a test-fixture correction, not a product waiver.
+## v0.9.2 Employer verification and Resume experience
+
+| Integration | Source/automated status | Browser status |
+|---|---|---|
+| Employer registration and Pending persistence | PASS | Owner test required |
+| Pending/Rejected/Suspended login policy | PASS | Owner test required |
+| Paginated Administrator review | PASS | Owner test required |
+| Central approved-Employer authorization | PASS | Owner test required |
+| Resume Directory query/privacy | PASS | Owner test required |
+| Candidate single-Resume denial | PASS | Owner test required |
+| Approved Employer/Admin single Resume | PASS | Cariera V1/V2/V3 required |
+| Direct CV-download authorization | PASS | Cariera runtime required |
+| Invite Candidate exact callback removal | PASS | Cariera V1/V2/V3 required |
+| Contact authorization/privacy/rate limits | PASS | Owner test required |
+| Candidate/Admin mail and Reply-To | Source PASS | SMTP/inbox required |

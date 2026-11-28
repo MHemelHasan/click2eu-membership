@@ -6,6 +6,7 @@ $bootstrap = file_get_contents( $root . '/click2eu-membership.php' );
 $verification = file_get_contents( $root . '/includes/class-click2eu-employer-verification.php' );
 $category = file_get_contents( $root . '/includes/class-click2eu-category-access.php' );
 $access = file_get_contents( $root . '/includes/class-click2eu-access.php' );
+$route_policy = file_get_contents( $root . '/includes/class-click2eu-route-policy.php' );
 $css = file_get_contents( $root . '/assets/candidate-contact.css' );
 $js = file_get_contents( $root . '/assets/candidate-contact.js' );
 $pass = 0;
@@ -57,6 +58,9 @@ check_stage3( false !== strpos( $verification, "add_filter( 'registration_errors
 check_stage3( false !== strpos( $verification, 'WP_User_Query' ) && false !== strpos( $verification, 'paginate_links' ), 'Stage 2 admin pagination exists' );
 check_stage3( false !== strpos( $category, 'Click2EU_Auth::is_approved_employer()' ), 'Category workflow no longer trusts Employer role alone' );
 check_stage3( false !== strpos( $access, 'if ( Click2EU_Auth::is_approved_employer() )' ), 'POST workflow bypass requires approved Employer' );
+check_stage3( false !== strpos( $route_policy, "'click2eu_resume_employer_only'" ), 'Candidate single Resume viewing is explicitly denied' );
+check_stage3( false !== strpos( $access, "'resume_manager_user_can_download_resume_file'" ), 'Direct Resume downloads use the authorization filter' );
+check_stage3( false !== strpos( $access, 'authorize_resume_download' ), 'Resume download authorization is implemented' );
 
 echo "PASS: {$pass}\nFAIL: {$fail}\nTOTAL: " . ( $pass + $fail ) . "\n";
 exit( $fail ? 1 : 0 );

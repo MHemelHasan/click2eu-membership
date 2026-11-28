@@ -27,6 +27,9 @@ production untouched and do not use real Candidate data.
 4. Submit valid test values. Confirm the Employer becomes Pending and is not
    automatically logged in.
 5. Try to log in as Pending. Confirm login is blocked with a review message.
+   The expected text is: **Your employer account is currently pending
+   administrative verification. You will be able to log in once your account
+   has been approved.**
 6. As Administrator, open **Click2EU Memberships > Employer Verification**.
    Confirm company details, status, private note, and actions display correctly.
 7. Approve the Employer. Confirm login and approved-Employer access now work.
@@ -34,6 +37,9 @@ production untouched and do not use real Candidate data.
    Employer page and confirm privileged access is removed.
 9. Confirm Rejected and Set Pending also block login/access, and private notes
    never appear on the frontend.
+   Rejected must say the registration was not approved; Suspended must say the
+   account was suspended. Both may direct the Employer to Click2EU support but
+   must not expose the Administrator note.
 10. If more than 25 Employers exist, check page 2 and every status filter.
 
 ## 3. Verify Stage 3 on V1, V2, and V3
@@ -80,6 +86,13 @@ be rejected server-side:
 
 As the approved Employer, open Candidate 2's inactive/expired membership resume.
 Contact Candidate must be unavailable.
+
+Also paste Candidate 1's single-Resume URL directly while logged in as a
+Candidate. The whole profile must be denied, even if that Candidate has Active
+membership. Copy a Resume CV download URL from the approved-Employer session and
+try it as Guest, Candidate, and Pending Employer; every attempt must be denied.
+The approved Employer and Administrator may download only while the Resume owner
+has effective Active membership.
 
 ## 6. Security and responsive checks
 

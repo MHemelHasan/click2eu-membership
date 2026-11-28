@@ -558,3 +558,12 @@ cleanup at their exact delays.
 
 See `BROWSER-E2E-REPORT.md`, `INTEGRATION-MATRIX.md` and `QA-BLOCKERS.md` for the
 evidence classification and remaining limitations.
+## v0.9.2 Employer verification and Resume experience final audit
+
+The plan has three product capabilities and a final acceptance gate. Automated
+source/mock tests cover Employer registration/status/authentication, Resume
+Directory constraints, Candidate single-Resume denial, direct CV-download
+authorization, exact Invite Candidate replacement, Contact privacy, mail
+outcomes, idempotency, and rate limits. PHP 8.2/8.4 lint is required before the
+release archive. Licensed Cariera browser E2E and SMTP/inbox delivery remain
+owner-run and must not be inferred from static tests.

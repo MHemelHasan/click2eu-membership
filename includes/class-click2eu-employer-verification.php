@@ -370,7 +370,7 @@ final class Click2EU_Employer_Verification {
 			array(
 				'register' => true,
 				'status'   => true,
-				'message'  => '<span class="job-manager-message success">' . esc_html__( 'Registration submitted! Your employer account is pending administrative verification. You will be notified once an administrator approves your account.', 'click2eu-membership' ) . '</span>',
+				'message'  => '<span class="job-manager-message success">' . esc_html__( 'Registration submitted! Your employer account is pending administrative verification. You can log in after an administrator approves your account.', 'click2eu-membership' ) . '</span>',
 				'role'     => 'employer',
 			)
 		);
