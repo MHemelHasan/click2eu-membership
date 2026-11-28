@@ -38,6 +38,7 @@ final class Click2EU_Employer_Verification {
 
 		// Standard WordPress registration form hook
 		add_action( 'register_form', array( __CLASS__, 'render_standard_registration_fields' ) );
+		add_filter( 'registration_errors', array( __CLASS__, 'validate_standard_registration_fields' ), 10, 3 );
 
 		// Cariera AJAX registration validation (priority 5 runs before Cariera's priority 10)
 		add_action( 'wp_ajax_nopriv_cariera_ajax_register', array( $this, 'validate_cariera_employer_registration' ), 5 );
@@ -201,6 +202,9 @@ final class Click2EU_Employer_Verification {
 	 * Standard WordPress registration fields fallback.
 	 */
 	public static function render_standard_registration_fields() {
+		if ( 'employer' !== get_option( 'default_role' ) ) {
+			return;
+		}
 		?>
 		<p class="c2eu-employer-registration-field">
 			<label for="c2eu_company_name"><?php esc_html_e( 'Company Name (Employers)', 'click2eu-membership' ); ?><br />
@@ -211,6 +215,37 @@ final class Click2EU_Employer_Verification {
 			<input type="text" name="c2eu_company_registration_number" id="c2eu_company_registration_number" class="input" value="" size="25" /></label>
 		</p>
 		<?php
+	}
+
+	/**
+	 * Validates the WordPress registration fallback when Employer is the
+	 * configured default role. Candidate/default-role registrations remain
+	 * untouched and never receive Employer-only requirements.
+	 *
+	 * @param WP_Error $errors               Registration errors.
+	 * @param string   $sanitized_user_login Sanitized login.
+	 * @param string   $user_email           Submitted email.
+	 * @return WP_Error
+	 */
+	public static function validate_standard_registration_fields( $errors, $sanitized_user_login, $user_email ) {
+		unset( $sanitized_user_login, $user_email );
+		if ( 'employer' !== get_option( 'default_role' ) ) {
+			return $errors;
+		}
+
+		$company_name = self::submitted_company_name();
+		$reg_number   = self::submitted_registration_number();
+		if ( '' === $company_name ) {
+			$errors->add( 'click2eu_company_name_required', __( 'Company Name is required for Employer registration.', 'click2eu-membership' ) );
+		} elseif ( 160 < self::text_length( $company_name ) ) {
+			$errors->add( 'click2eu_company_name_too_long', __( 'Company Name must be 160 characters or fewer.', 'click2eu-membership' ) );
+		}
+		if ( '' === $reg_number ) {
+			$errors->add( 'click2eu_registration_number_required', __( 'Company Registration Number is required for Employer registration.', 'click2eu-membership' ) );
+		} elseif ( 100 < self::text_length( $reg_number ) ) {
+			$errors->add( 'click2eu_registration_number_too_long', __( 'Company Registration Number must be 100 characters or fewer.', 'click2eu-membership' ) );
+		}
+		return $errors;
 	}
 
 	/**
@@ -235,8 +270,8 @@ final class Click2EU_Employer_Verification {
 			return; // Let Cariera output its session expired message.
 		}
 
-		$company_name = sanitize_text_field( wp_unslash( $_POST['c2eu_company_name'] ?? $_POST['company_name'] ?? '' ) );
-		$reg_number   = sanitize_text_field( wp_unslash( $_POST['c2eu_company_registration_number'] ?? $_POST['company_registration_number'] ?? '' ) );
+		$company_name = self::submitted_company_name();
+		$reg_number   = self::submitted_registration_number();
 
 		if ( '' === $company_name ) {
 			wp_send_json(
@@ -257,6 +292,26 @@ final class Click2EU_Employer_Verification {
 			);
 			return;
 		}
+		if ( 160 < self::text_length( $company_name ) || 100 < self::text_length( $reg_number ) ) {
+			wp_send_json(
+				array(
+					'register' => false,
+					'message'  => '<span class="job-manager-message error">' . esc_html__( 'Company details are too long. Please shorten them and try again.', 'click2eu-membership' ) . '</span>',
+				)
+			);
+		}
+	}
+
+	private static function submitted_company_name() {
+		return sanitize_text_field( wp_unslash( $_POST['c2eu_company_name'] ?? $_POST['company_name'] ?? '' ) );
+	}
+
+	private static function submitted_registration_number() {
+		return sanitize_text_field( wp_unslash( $_POST['c2eu_company_registration_number'] ?? $_POST['company_registration_number'] ?? '' ) );
+	}
+
+	private static function text_length( $value ) {
+		return function_exists( 'mb_strlen' ) ? mb_strlen( $value ) : strlen( $value );
 	}
 
 	/**
@@ -273,8 +328,8 @@ final class Click2EU_Employer_Verification {
 		// Initialize status as pending.
 		update_user_meta( $user->ID, self::META_STATUS, self::STATUS_PENDING );
 
-		$company_name = sanitize_text_field( wp_unslash( $_POST['c2eu_company_name'] ?? $_POST['company_name'] ?? '' ) );
-		$reg_number   = sanitize_text_field( wp_unslash( $_POST['c2eu_company_registration_number'] ?? $_POST['company_registration_number'] ?? '' ) );
+		$company_name = self::submitted_company_name();
+		$reg_number   = self::submitted_registration_number();
 
 		if ( '' !== $company_name ) {
 			update_user_meta( $user->ID, self::META_COMPANY_NAME, $company_name );
@@ -463,40 +518,26 @@ final class Click2EU_Employer_Verification {
 		$allowed_tabs = array( 'all', 'pending', 'approved', 'rejected', 'suspended' );
 		$current_tab  = isset( $_GET['status_filter'] ) ? sanitize_key( wp_unslash( $_GET['status_filter'] ) ) : 'all';
 		$current_tab  = in_array( $current_tab, $allowed_tabs, true ) ? $current_tab : 'all';
-
-		// Retrieve all employers
-		$employers = get_users( array(
-			'role'    => 'employer',
-			'orderby' => 'registered',
-			'order'   => 'DESC',
-			'number'  => 200,
-		) );
-
-		// Compute counts
-		$counts = array(
-			'all'       => count( $employers ),
-			'pending'   => 0,
-			'approved'  => 0,
-			'rejected'  => 0,
-			'suspended' => 0,
-		);
-
-		$details_list = array();
-		foreach ( $employers as $emp ) {
-			$details = self::get_employer_details( $emp->ID );
-			$details_list[] = $details;
-			$st = $details['status'];
-			if ( isset( $counts[ $st ] ) ) {
-				$counts[ $st ]++;
-			}
+		$paged        = max( 1, absint( $_GET['paged'] ?? 1 ) );
+		$per_page     = 25;
+		$counts       = array();
+		foreach ( $allowed_tabs as $status ) {
+			$count_query = new WP_User_Query( self::employer_query_args( $status, 1, 0 ) );
+			$counts[ $status ] = absint( $count_query->get_total() );
 		}
 
-		// Filter list if tab is not 'all'
-		if ( 'all' !== $current_tab ) {
-			$details_list = array_values( array_filter( $details_list, function( $d ) use ( $current_tab ) {
-				return $d['status'] === $current_tab;
-			} ) );
+		$query_args = self::employer_query_args( $current_tab, $per_page, ( $paged - 1 ) * $per_page );
+		$user_query = new WP_User_Query( $query_args );
+		$total_items = absint( $user_query->get_total() );
+		$total_pages = max( 1, (int) ceil( $total_items / $per_page ) );
+		if ( $paged > $total_pages ) {
+			$paged = $total_pages;
+			$query_args['offset'] = ( $paged - 1 ) * $per_page;
+			$user_query = new WP_User_Query( $query_args );
 		}
+		$details_list = array_map( static function ( $employer ) {
+			return self::get_employer_details( $employer->ID );
+		}, $user_query->get_results() );
 
 		// Notice display
 		$notice_key = sanitize_key( $_GET['c2eu_msg'] ?? '' );
@@ -643,7 +684,41 @@ final class Click2EU_Employer_Verification {
 					</tbody>
 				</table>
 			</div>
+			<?php if ( $total_pages > 1 ) : ?>
+				<div class="tablenav"><div class="tablenav-pages">
+					<span class="displaying-num"><?php echo esc_html( sprintf( _n( '%s employer', '%s employers', $total_items, 'click2eu-membership' ), number_format_i18n( $total_items ) ) ); ?></span>
+					<?php
+					$base = str_replace( '999999999', '%#%', esc_url( add_query_arg( array( 'page' => self::PAGE_SLUG, 'status_filter' => $current_tab, 'paged' => 999999999 ), admin_url( 'admin.php' ) ) ) );
+					echo wp_kses_post( paginate_links( array( 'base' => $base, 'current' => $paged, 'total' => $total_pages ) ) );
+					?>
+				</div></div>
+			<?php endif; ?>
 		</div>
 		<?php
+	}
+
+	private static function employer_query_args( $status, $number, $offset ) {
+		$args = array(
+			'role'        => 'employer',
+			'orderby'     => 'registered',
+			'order'       => 'DESC',
+			'number'      => absint( $number ),
+			'offset'      => absint( $offset ),
+			'count_total' => true,
+		);
+		if ( 'all' === $status ) {
+			return $args;
+		}
+		if ( self::STATUS_PENDING === $status ) {
+			$args['meta_query'] = array(
+				'relation' => 'OR',
+				array( 'key' => self::META_STATUS, 'compare' => 'NOT EXISTS' ),
+				array( 'key' => self::META_STATUS, 'value' => array( self::STATUS_APPROVED, self::STATUS_REJECTED, self::STATUS_SUSPENDED ), 'compare' => 'NOT IN' ),
+			);
+			return $args;
+		}
+		$args['meta_key']   = self::META_STATUS;
+		$args['meta_value'] = $status;
+		return $args;
 	}
 }

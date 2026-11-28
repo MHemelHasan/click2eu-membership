@@ -112,7 +112,7 @@ final class Click2EU_Category_Access {
 	}
 
 	private static function privileged_workflow() {
-		return current_user_can( 'manage_options' ) || Click2EU_Auth::is_employer();
+		return current_user_can( 'manage_options' ) || Click2EU_Auth::is_approved_employer();
 	}
 
 	public function validate_application_form( $valid, $fields, $values ) {

@@ -236,3 +236,18 @@ resolve registration-field provenance before beginning Stage 1.
 - Browser QA: BLOCKED (LocalWP HTTP halted, Cariera license inactive).
 
 **Next action:** Stage 3 — Contact Candidate workflow and removal of Cariera Invite Candidate display callbacks.
+
+## 2026-11-28 (Asia/Dhaka) - Stage 2 audit and Stage 3 implementation
+
+- Audited Stage 2 before Stage 3 and confirmed four gaps: standard-registration
+  validation, Employer admin pagination, and two role-only authorization paths.
+- Repaired all four without adding statuses or changing vendor code.
+- Implemented secure single-resume Contact Candidate integration and exact
+  removal of Cariera's Invite Candidate callback for V1/V2/V3 hooks.
+- Added server authorization, Active membership validation, Candidate-email
+  privacy, nonce, idempotency, cooldown, hourly limit, Candidate mail, and admin
+  copy.
+- Added the owner-facing Stage 2/3 visual test guide.
+- PHP 8.2 and 8.4 lint: PASS. Automated suites: PASS, 227/227 assertions.
+- Licensed Cariera browser/runtime and SMTP/inbox checks: NOT TESTED locally;
+  owner validation is required on the isolated licensed test site.

@@ -160,7 +160,7 @@ final class Click2EU_Access {
 		if ( ! $is_resume && ! $is_application ) {
 			return;
 		}
-		if ( Click2EU_Auth::is_employer() ) {
+		if ( Click2EU_Auth::is_approved_employer() ) {
 			return;
 		}
 		if ( ! is_user_logged_in() || ! Click2EU_Auth::is_candidate() ) {
